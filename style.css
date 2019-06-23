@@ -1,0 +1,36 @@
+
+body {
+  /* background: black; */
+}
+
+#c {
+  /* position: absolute; */
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 960px;
+  height: 544px;
+  border: 1px solid black
+}
+
+#ccc {
+  /* position: absolute; */
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 960px;
+  height: 544px;
+  border: 1px solid black
+}
+
+#v {
+  border: 1px solid black;
+  /* position: absolute; */
+  /* top: 50%;
+  left: 50%;
+  margin: -180px 0 0 -240px; */
+  height: 400px;
+
+}
