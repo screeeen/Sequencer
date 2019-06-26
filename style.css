@@ -1,36 +1,87 @@
-
 body {
-  /* background: black; */
+  background: black;
+  color: white;
 }
 
-#c {
-  /* position: absolute; */
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 960px;
-  height: 544px;
-  border: 1px solid black
+canvas {
+  /* background-image: url(foo.png); */
+  border: 1px blue solid;
+  background-repeat: no-repeat;
 }
 
-#ccc {
-  /* position: absolute; */
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 960px;
-  height: 544px;
-  border: 1px solid black
+#play-button {
+  border: 1px solid white;
+  border-radius: 5px;
+  width: 30px;
 }
 
-#v {
-  border: 1px solid black;
-  /* position: absolute; */
-  /* top: 50%;
-  left: 50%;
-  margin: -180px 0 0 -240px; */
-  height: 400px;
+div,
+#canvasGroup {
+  float: left;
+  /* border: 1px solid #444444; */
+  padding: 10px;
+  margin: 10px;
+  /* background: #3B3B3B; */
+}
 
+#sliders {
+  display: flex;
+  flex-direction: column;
+}
+
+
+input[type='range'] {
+  /* min-width: 400px; */
+  width: 500px;
+  /* height: 100px;
+  cursor: pointer;
+  font-size: .7em;
+  margin: 20px 3px 0 3px;
+  position: relative;
+  top: 100%;
+  text-align: justify; */
+}
+
+#the-app {
+  display: flex;
+  flex-direction: column;
+}
+
+.rangeslider,
+input[type='range'] {
+  max-width: 400px;
+}
+
+
+.rangeslider__ruler {
+  cursor: pointer;
+  font-size: .7em;
+  margin: 20px 3px 0 3px;
+  position: relative;
+  top: 100%;
+  text-align: justify;
+}
+
+.rangeslider__ruler:after {
+  content: "";
+  display: inline-block;
+  width: 100%;
+}
+
+input[type=range] {
+  -webkit-appearance: none;
+  background: transparent;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  background: #fff;
+  height: 18px;
+  width: 18px;
+  margin-top: -8px;
+  border-radius: 99px;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  width: 300px;
+  height: 4px;
+  background: #ddd;
 }

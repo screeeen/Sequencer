@@ -1,36 +1,28 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>exp</title>
-    <style>
-      body {
-        background: black;
-        color:#CCCCCC;
-      }
-      canvas {
-        /* background-image: url(foo.png); */
-        border: 1px blue solid;
-        background-repeat: no-repeat;
-      }
-      div,#canvasGroup {
-        float: left;
-        border :1px solid #444444;
-        padding:10px;
-        margin: 10px;
-        background:#3B3B3B;
-      }
-    </style>
-  </head>
 
-  <body>
+<head>
+  <link rel="stylesheet" href="style.css">
+  <title>thang</title>
+</head>
+
+<body>
+  <div id="the-app">
     <div>
-      <video id="video" src="video_.mov" width="540" height="300" controls="true"/>
+      <video id="video" src="video.mov" width="540" height="300" controls="true"/>
     </div>
-
     <div id="canvasGroup">
-      <canvas id="c1" width="540" height="300"></canvas>
-      <canvas id="c2" width="540" height="300"></canvas>
+      <canvas id="c1" width="540" height="300" hidden="true"></canvas>
+      <canvas id="c2" width="540" height="300" hidden="true"></canvas>
     </div>
+    <h2>RED </h2><input id="red-slider" type="range" min="0" max="255" step="1">
+    <h2>GREEN </h2><input id="green-slider" type="range" min="0" max="255" step="1">
+    <h2>BLUE </h2><input id="blue-slider" type="range" min="0" max="255" step="1">
+    <h2>LOOP</h2><input id="loop-checkbox" type="checkbox">
+    <h2>PLAY</h2><input id="play-button" type="button">
+
+  </div>
   <script type="text/javascript" src="processor.js"></script>
-  </body>
+</body>
+
 </html>
