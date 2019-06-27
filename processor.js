@@ -12,7 +12,7 @@ let processor = {
 
   doLoad: function () {
     this.video = document.getElementById("video");
-    this.video.setAttribute("hidden", true);
+    // this.video.setAttribute("hidden", true);
     this.c1 = document.getElementById("c1");
     this.ctx1 = this.c1.getContext("2d");
     this.c2 = document.getElementById("c2");
@@ -28,6 +28,8 @@ let processor = {
     this.red = 128;
     this.gree = 128;
     this.blue = 128;
+    this.alpha = 255;
+
     if (this.video.readyState === 4) {
 
       let loop = document.getElementById("video").getAttribute(loop).value;
@@ -49,21 +51,21 @@ let processor = {
     this.red = value;
     this.computeFrame();
 
-    console.log(this.red);
   },
 
   changeGreen: function (value) {
     this.green = value;
     this.computeFrame();
-
-    console.log(this.green);
   },
 
   changeBlue: function (value) {
     this.blue = value;
     this.computeFrame();
+  },
 
-    console.log(this.blue);
+  changeAlpha: function (value) {
+    this.alpha = value;
+    this.computeFrame();
   },
 
   changeLoop: function (loop) {
@@ -103,15 +105,15 @@ let processor = {
         && g < (g2 + this.threshold) && g > (g2 - this.threshold)
         && b < (b2 + this.threshold) && b > (b2 - this.threshold)
       ) {
-        frameMix.data[i * 4 + 0] = 0;
-        frameMix.data[i * 4 + 1] = 0;
-        frameMix.data[i * 4 + 2] = 0;
-        frameMix.data[i * 4 + 3] = 0;
-
-        // frameMix.data[i * 4 + 0] = this.red;
-        // frameMix.data[i * 4 + 1] = this.green;
-        // frameMix.data[i * 4 + 2] = this.blue;
+        // frameMix.data[i * 4 + 0] = 0;
+        // frameMix.data[i * 4 + 1] = 0;
+        // frameMix.data[i * 4 + 2] = 0;
         // frameMix.data[i * 4 + 3] = 0;
+
+        frameMix.data[i * 4 + 0] = this.red;
+        frameMix.data[i * 4 + 1] = this.green;
+        frameMix.data[i * 4 + 2] = this.blue;
+        frameMix.data[i * 4 + 3] = this.alpha;
         // console.log('*');
 
         
@@ -123,12 +125,13 @@ let processor = {
       }
     }
     this.ctxMix.putImageData(frameMix, 0, 0);
+    this.pushToFinal();
+  },
+
+  pushToFinal:function(){ 
     let pic = new Image();
     pic = this.mix.toDataURL();
     this.finalImage.push(pic);
-
-
-    return;
   },
 
    revokeURL:function(e) {
@@ -176,6 +179,10 @@ document.getElementById("green-slider").addEventListener("change", () => {
 
 document.getElementById("blue-slider").addEventListener("change", () => {
   processor.changeBlue(document.getElementById("blue-slider").value);
+});
+
+document.getElementById("alpha-slider").addEventListener("change", () => {
+  processor.changeBlue(document.getElementById("alpha-slider").value);
 });
 
 document.getElementById("loop-checkbox").addEventListener("change", () => {
