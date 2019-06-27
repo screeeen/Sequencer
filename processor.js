@@ -18,7 +18,7 @@ let processor = {
     this.c2 = document.getElementById("c2");
     this.ctx2 = this.c2.getContext("2d");
     this.mix = document.createElement('canvas');
-    this.mix.setAttribute("hidden", true);
+    // this.mix.setAttribute("hidden", true);
     this.mix.width = this.c1.width;
     this.mix.height = this.c1.height;
     this.ctxMix = this.mix.getContext("2d");
@@ -87,10 +87,6 @@ let processor = {
     if (this.video.currentTime < 0.1) { this.ctx1.drawImage(this.video, 0, 0, this.c1.width, this.c1.height); }
     let frameStatic = this.ctx1.getImageData(0, 0, this.c1.width, this.c1.height);
     this.ctx2.drawImage(this.video, 0, 0, this.mix.width, this.mix.height);
-
-    pillar imagen de ctx2
-    pushearla en finalImange, (y no los pixels)
-
     let frameMix = this.ctx2.getImageData(0, 0, this.mix.width, this.mix.height);
     let l = frameMix.data.length / 4;
 
@@ -118,8 +114,7 @@ let processor = {
         // frameMix.data[i * 4 + 3] = 0;
         // console.log('*');
 
-        this.finalImage.push(frameMix.data);
-        continue;
+        
       } else {
         // frameMix.data[i * 4 + 0] = 0;
         // frameMix.data[i * 4 + 1] = 0;
@@ -128,23 +123,33 @@ let processor = {
       }
     }
     this.ctxMix.putImageData(frameMix, 0, 0);
+    let pic = new Image();
+    pic = this.mix.toDataURL();
+    this.finalImage.push(pic);
+
+
     return;
+  },
+
+   revokeURL:function(e) {
+    URL.revokeObjectURL(this.src);
   },
 
   logfinal: function () {
     console.log('seq:');
-    for (let i = 0; i < this.finalImage.length; i += 88) {
-      console.log('hola', typeof this.finalImage[i]);
-      // let canvas = document.getElementById('c2');
-      // let dataURL = canvas.toDataURL('image/png,0.1');
-      // let pic = document.createElement('img').src = dataURL;
-      // document.getElementById('canvasGroup').appendChild(this.mix);
-      this.c = document.createElement('canvas');
-      // this.mix.width = this.c1.width;
-      // this.mix.height = this.c1.height;
-      this.ct = this.c.getContext("2d");
+    for (let i = 0; i < this.finalImage.length; i += 10) {
+      
+      img = new Image();
+      img.src = this.finalImage[i].toString();
+      console.log(document.getElementById('canvasGroup'), img);
+      
+      document.getElementById('canvasGroup').appendChild(img);
+      // this.c = document.createElement('canvas');
+      // // this.mix.width = this.c1.width;
+      // // this.mix.height = this.c1.height;
+      // this.ct = this.c.getContext("2d");
       // this.ct.drawImage(this.finalImage[i].getImageData(0,0),0,0)
-      document.getElementById('canvasGroup').appendChild(this.c);
+      // document.getElementById('canvasGroup').appendChild(this.c);
 
 
     }
@@ -180,7 +185,6 @@ document.getElementById("loop-checkbox").addEventListener("change", () => {
 });
 
 document.getElementById("play-button").addEventListener("click", () => {
-  console.log(document.getElementById("video"));
   document.getElementById("video").play();
 });
 
