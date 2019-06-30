@@ -29,9 +29,10 @@ let processor = {
     this.gree = 128;
     this.blue = 128;
     this.alpha = 255;
-
+    this.frameCount = 0;
+    this.frameStatic = undefined;
+    this.frameMix = undefined; 
     if (this.video.readyState === 4) {
-
       let loop = document.getElementById("video").getAttribute(loop).value;
     }
 
@@ -39,33 +40,37 @@ let processor = {
     this.video.addEventListener("play", function () {
       self.width = self.video.videoWidth / 2;
       self.height = self.video.videoHeight / 2;
-      self.timerCallback();
+      // self.timerCallback();
+      self.computeFrame();
     }, false);
 
     this.video.addEventListener("seeked", function () {
-      self.computeFrame();
+      // self.computeFrame();
+      self.displaySingleFrame();
+      console.log("seeked at frame: ", self.frameCount);
+
     }, false);
   },
 
   changeRed: function (value) {
     this.red = value;
-    this.computeFrame();
+    // this.computeFrame();
 
   },
 
   changeGreen: function (value) {
     this.green = value;
-    this.computeFrame();
+    // this.computeFrame();
   },
 
   changeBlue: function (value) {
     this.blue = value;
-    this.computeFrame();
+    // this.computeFrame();
   },
 
   changeAlpha: function (value) {
     this.alpha = value;
-    this.computeFrame();
+    // this.computeFrame();
   },
 
   changeLoop: function (loop) {
@@ -79,82 +84,124 @@ let processor = {
     return loop
   },
 
-  getFrame: function () {
-    console.log(this.video);
-    this.ctx1.drawImage(this.video, 0, 0, this.c1.width, this.c1.height);
-    console.log(this.ctx1);
-  },
-
-  computeFrame: function () {
-    if (this.video.currentTime < 0.1) { this.ctx1.drawImage(this.video, 0, 0, this.c1.width, this.c1.height); }
-    let frameStatic = this.ctx1.getImageData(0, 0, this.c1.width, this.c1.height);
+  displaySingleFrame: function () {
     this.ctx2.drawImage(this.video, 0, 0, this.mix.width, this.mix.height);
     let frameMix = this.ctx2.getImageData(0, 0, this.mix.width, this.mix.height);
-    let l = frameMix.data.length / 4;
+    img = new Image();
+    pic = this.c2.toDataURL();
+    img.src = pic;
+    document.getElementById('canvasGroup').appendChild(img);
+  },
+
+  setFirstFrame:  function () {
+    if (this.video.currentTime < 0.1) {
+      this.ctx1.drawImage(this.video, 0, 0, this.c1.width, this.c1.height);
+          // this.ctx2.drawImage(this.video, 0, 0, this.mix.width, this.mix.height);
+    }
+  },
+
+  getStaticFrame: function(){
+    this.frameStatic = this.ctx1.getImageData(0, 0, this.c1.width, this.c1.height);
+        console.log("Static Frame ",this.video.currentTime, this.frameCount);
+
+  },
+
+  getMixFrame: function(){
+    this.frameMix = this.ctx2.getImageData(0, 0, this.mix.width, this.mix.height);
+    console.log("frameMix  ",this.frameMix, this.frameCount);
+
+  },
+
+  compare : function(){
+    let l = this.frameMix.data.length / 4;
 
     for (let i = 0; i < l; i++) {
-      let r = frameMix.data[i * 4 + 0];
-      let g = frameMix.data[i * 4 + 1];
-      let b = frameMix.data[i * 4 + 2];
+      let r = this.frameMix.data[i * 4 + 0];
+      let g = this.frameMix.data[i * 4 + 1];
+      let b = this.frameMix.data[i * 4 + 2];
 
-      let r2 = frameStatic.data[i * 4 + 0];
-      let g2 = frameStatic.data[i * 4 + 1];
-      let b2 = frameStatic.data[i * 4 + 2];
+      let r2 = this.frameStatic.data[i * 4 + 0];
+      let g2 = this.frameStatic.data[i * 4 + 1];
+      let b2 = this.frameStatic.data[i * 4 + 2];
 
       if (r < (r2 + this.threshold) && r > (r2 - this.threshold)
         && g < (g2 + this.threshold) && g > (g2 - this.threshold)
         && b < (b2 + this.threshold) && b > (b2 - this.threshold)
       ) {
-        // frameMix.data[i * 4 + 0] = 0;
-        // frameMix.data[i * 4 + 1] = 0;
-        // frameMix.data[i * 4 + 2] = 0;
-        // frameMix.data[i * 4 + 3] = 0;
-
-        frameMix.data[i * 4 + 0] = this.red;
-        frameMix.data[i * 4 + 1] = this.green;
-        frameMix.data[i * 4 + 2] = this.blue;
-        frameMix.data[i * 4 + 3] = this.alpha;
-        // console.log('*');
-
-        
-      } else {
-        // frameMix.data[i * 4 + 0] = 0;
-        // frameMix.data[i * 4 + 1] = 0;
-        // frameMix.data[i * 4 + 2] = 0;
-        // frameMix.data[i * 4 + 3] = 0;
+        this.frameMix.data[i * 4 + 0] = this.red;
+        this.frameMix.data[i * 4 + 1] = this.green;
+        this.frameMix.data[i * 4 + 2] = this.blue;
+        this.frameMix.data[i * 4 + 3] = this.alpha;
       }
     }
-    this.ctxMix.putImageData(frameMix, 0, 0);
-    this.pushToFinal();
   },
 
-  pushToFinal:function(){ 
+  paintMix: function(){
+    this.ctxMix.putImageData(this.frameMix, 0, 0);
+  },
+
+  computeFrame: async function () {
+    await this.setFirstFrame();
+    await this.getStaticFrame();
+    await this.getMixFrame();
+    await this.displaySingleFrame();
+    await this.compare();
+    await this.paintMix();
+    await this.passFrame();
+  },
+
+  passFrame: async function () {
+    if (this.video.currentTime < this.video.duration) {
+      await this.pushToFinal();
+      await this.passOneFrame();
+       this.frameCount += .3;
+      // await console.log(" frame: ", this.frameCount, " currentTime ", this.video.currentTime);
+      this.computeFrame();
+    } else {
+      console.log("video ended");
+      await this.logfinal();
+    }
+  },
+
+  passOneFrame: function(){
+    // this.video.currentTime += .1 ;
+    this.video.play();
+    let self = this;
+    this.video.addEventListener('canplay', function() {
+      self.currentTime = self.frameCount/self.video.duration;
+    });
+    console.log("passing to ",this.video.currentTime, "  duration : ", this.video.duration);
+    
+  },
+
+  pushToFinal: function () {
     let pic = new Image();
     pic = this.mix.toDataURL();
     this.finalImage.push(pic);
+    // console.log("pushing: ", this.finalImage.length, "    ", this.frameCount);
+    // img = new Image();
+    // let i = this.finalImage.length - 1;
+    // img.src = this.finalImage[i].toString();
+    // document.getElementById('canvasGroup').appendChild(img);
   },
 
-   revokeURL:function(e) {
+  revokeURL: function (e) {
     URL.revokeObjectURL(this.src);
   },
 
   logfinal: function () {
-    console.log('seq:');
-    for (let i = 0; i < this.finalImage.length; i += 10) {
-      
+    for (let i = 0; i < this.finalImage.length; i += 2) {
+      console.log('logFinal i:', i);
       img = new Image();
       img.src = this.finalImage[i].toString();
-      console.log(document.getElementById('canvasGroup'), img);
-      
       document.getElementById('canvasGroup').appendChild(img);
+      console.log(document.getElementById('canvasGroup'), img);
       // this.c = document.createElement('canvas');
       // // this.mix.width = this.c1.width;
       // // this.mix.height = this.c1.height;
       // this.ct = this.c.getContext("2d");
       // this.ct.drawImage(this.finalImage[i].getImageData(0,0),0,0)
       // document.getElementById('canvasGroup').appendChild(this.c);
-
-
     }
     console.log('fin');
   }
@@ -192,21 +239,22 @@ document.getElementById("loop-checkbox").addEventListener("change", () => {
 });
 
 document.getElementById("play-button").addEventListener("click", () => {
-  document.getElementById("video").play();
+  // document.getElementById("video").play();
+  processor.computeFrame();
 });
-
-
-
-
-
-
-
-
-
-
-
 
 
     // const frameRate = 25;
     // var frameNumber = Math.floor(this.video.currentTime * frameRate);
     // console.log(frameNumber);
+
+
+  // getFramePromise: new Promise ((resolve,reject) => {
+  //   let pic = new Image();
+  //   pic = this.mix.toDataURL();
+  //   this.finalImage.push(pic);
+
+  //   if ()
+  //   resolve("sorted")
+  //   reject("error")
+  // } )

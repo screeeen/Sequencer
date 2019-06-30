@@ -5,13 +5,20 @@ body {
 
 canvas {
   /* background-image: url(foo.png); */
-  border: 1px blue solid;
+  /* border: 10px white dotted; */
   background-repeat: no-repeat;
 }
 
+video {
+  /* border: 10px white dotted; */
+
+}
+
 #play-button {
-  border: 1px solid white;
+  /* border: 4px dotted white; */
   border-radius: 5px;
+  margin: 10px;
+  padding: 10px;
   width: 30px;
 }
 
@@ -45,27 +52,6 @@ input[type='range'] {
 #the-app {
   display: flex;
   flex-direction: column;
-}
-
-.rangeslider,
-input[type='range'] {
-  max-width: 400px;
-}
-
-
-.rangeslider__ruler {
-  cursor: pointer;
-  font-size: .7em;
-  margin: 20px 3px 0 3px;
-  position: relative;
-  top: 100%;
-  text-align: justify;
-}
-
-.rangeslider__ruler:after {
-  content: "";
-  display: inline-block;
-  width: 100%;
 }
 
 input[type=range] {
