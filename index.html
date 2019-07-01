@@ -2,26 +2,39 @@
 <html>
 
 <head>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" type="text/css" href="resets.css">
+  <link rel="stylesheet" type="text/css" href="style.css">
   <title>thang</title>
 </head>
 
 <body>
   <div id="the-app">
-    <div>
-      <video id="video" src="video.mov" width="540" height="300" controls="true" loop="false"/>
+    <header>
+      <h1>VIDEO SEQUENCER</h1>
+      <p>A digital tool for those who like sequences</p>
+    </header>
+    <input type="file" name="video" onchange="processor.changeVideo(event.target)">
+    <p>VIDEO</p>
+    <div id="video-panel">
+      <div>
+        <p>video</p>
+        <video id="video" src="video.mov" width="540" height="300" controls="true" loop="false" />
+        <h2>LOOP</h2><input id="loop-checkbox" type="checkbox">
+        <h2>PLAY</h2><input id="play-button" type="button">
+      </div>
+      <div id="controls">
+        <p>controls</p>
+        <h6>RED </h6><input id="red-slider" type="range" min="0" max="255" step="1">
+        <h6>GREEN </h6><input id="green-slider" type="range" min="0" max="255" step="1">
+        <h6>BLUE </h6><input id="blue-slider" type="range" min="0" max="255" step="1">
+        <h6>ALPHA </h6><input id="alpha-slider" type="range" min="0" max="255" step="1">
+      </div>
     </div>
     <div id="canvasGroup">
+      <p>Output:</p>
       <canvas id="c1" width="540" height="300" hidden="true"></canvas>
       <canvas id="c2" width="540" height="300" hidden="true"></canvas>
     </div>
-    <h2>RED </h2><input id="red-slider" type="range" min="0" max="255" step="1">
-    <h2>GREEN </h2><input id="green-slider" type="range" min="0" max="255" step="1">
-    <h2>BLUE </h2><input id="blue-slider" type="range" min="0" max="255" step="1">
-    <h2>ALPHA </h2><input id="alpha-slider" type="range" min="0" max="255" step="1">
-    <h2>LOOP</h2><input id="loop-checkbox" type="checkbox">
-    <h2>PLAY</h2><input id="play-button" type="button">
-
   </div>
   <script type="text/javascript" src="processor.js"></script>
 </body>

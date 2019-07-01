@@ -10,6 +10,12 @@ let processor = {
     }, 0);
   },
 
+  changeVideo:  function(e){
+    // document.getElementById("video").video.src
+    console.log('hello',e);
+    
+  },
+
   doLoad: function () {
     this.video = document.getElementById("video");
     // this.video.setAttribute("hidden", true);
@@ -40,37 +46,30 @@ let processor = {
     this.video.addEventListener("play", function () {
       self.width = self.video.videoWidth / 2;
       self.height = self.video.videoHeight / 2;
-      // self.timerCallback();
       self.computeFrame();
     }, false);
 
     this.video.addEventListener("seeked", function () {
-      // self.computeFrame();
-      self.displaySingleFrame();
       console.log("seeked at frame: ", self.frameCount);
-
+      self.video.pause();
     }, false);
   },
 
   changeRed: function (value) {
     this.red = value;
-    // this.computeFrame();
 
   },
 
   changeGreen: function (value) {
     this.green = value;
-    // this.computeFrame();
   },
 
   changeBlue: function (value) {
     this.blue = value;
-    // this.computeFrame();
   },
 
   changeAlpha: function (value) {
     this.alpha = value;
-    // this.computeFrame();
   },
 
   changeLoop: function (loop) {
@@ -80,7 +79,6 @@ let processor = {
     } else {
       loop = true;
     }
-    // loop ? loop = true : loop = false;
     return loop
   },
 
@@ -96,19 +94,16 @@ let processor = {
   setFirstFrame:  function () {
     if (this.video.currentTime < 0.1) {
       this.ctx1.drawImage(this.video, 0, 0, this.c1.width, this.c1.height);
-          // this.ctx2.drawImage(this.video, 0, 0, this.mix.width, this.mix.height);
     }
   },
 
   getStaticFrame: function(){
     this.frameStatic = this.ctx1.getImageData(0, 0, this.c1.width, this.c1.height);
-        console.log("Static Frame ",this.video.currentTime, this.frameCount);
 
   },
 
   getMixFrame: function(){
     this.frameMix = this.ctx2.getImageData(0, 0, this.mix.width, this.mix.height);
-    console.log("frameMix  ",this.frameMix, this.frameCount);
 
   },
 
@@ -158,13 +153,12 @@ let processor = {
       this.computeFrame();
     } else {
       console.log("video ended");
-      this.video.pause();
-
-      // await this.logfinal();
+      await this.logfinal();
     }
   },
 
   passOneFrame: function(){
+    // this.video.currentTime += .1 ;
     this.video.play();
     let self = this;
     this.video.addEventListener('canplay', function() {
@@ -178,11 +172,7 @@ let processor = {
     let pic = new Image();
     pic = this.mix.toDataURL();
     this.finalImage.push(pic);
-    // console.log("pushing: ", this.finalImage.length, "    ", this.frameCount);
-    // img = new Image();
-    // let i = this.finalImage.length - 1;
-    // img.src = this.finalImage[i].toString();
-    // document.getElementById('canvasGroup').appendChild(img);
+
   },
 
   revokeURL: function (e) {
@@ -196,12 +186,6 @@ let processor = {
       img.src = this.finalImage[i].toString();
       document.getElementById('canvasGroup').appendChild(img);
       console.log(document.getElementById('canvasGroup'), img);
-      // this.c = document.createElement('canvas');
-      // // this.mix.width = this.c1.width;
-      // // this.mix.height = this.c1.height;
-      // this.ct = this.c.getContext("2d");
-      // this.ct.drawImage(this.finalImage[i].getImageData(0,0),0,0)
-      // document.getElementById('canvasGroup').appendChild(this.c);
     }
     console.log('fin');
   }
@@ -233,28 +217,10 @@ document.getElementById("alpha-slider").addEventListener("change", () => {
 });
 
 document.getElementById("loop-checkbox").addEventListener("change", () => {
-  // let loop = document.getElementById("video").getAttribute(loop).value;
   console.log(document.getElementById("video").getAttribute("loop"));
   document.getElementById("video").setAttribute("loop", processor.changeLoop(document.getElementById("video").getAttribute("loop")))
 });
 
 document.getElementById("play-button").addEventListener("click", () => {
-  // document.getElementById("video").play();
   processor.computeFrame();
 });
-
-
-    // const frameRate = 25;
-    // var frameNumber = Math.floor(this.video.currentTime * frameRate);
-    // console.log(frameNumber);
-
-
-  // getFramePromise: new Promise ((resolve,reject) => {
-  //   let pic = new Image();
-  //   pic = this.mix.toDataURL();
-  //   this.finalImage.push(pic);
-
-  //   if ()
-  //   resolve("sorted")
-  //   reject("error")
-  // } )
