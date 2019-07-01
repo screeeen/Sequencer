@@ -155,16 +155,16 @@ let processor = {
       await this.pushToFinal();
       await this.passOneFrame();
        this.frameCount += .3;
-      // await console.log(" frame: ", this.frameCount, " currentTime ", this.video.currentTime);
       this.computeFrame();
     } else {
       console.log("video ended");
-      await this.logfinal();
+      this.video.pause();
+
+      // await this.logfinal();
     }
   },
 
   passOneFrame: function(){
-    // this.video.currentTime += .1 ;
     this.video.play();
     let self = this;
     this.video.addEventListener('canplay', function() {
