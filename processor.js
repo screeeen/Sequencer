@@ -10,10 +10,11 @@ let processor = {
     }, 0);
   },
 
-  changeVideo:  function(e){
-    // document.getElementById("video").video.src
-    console.log('hello',e);
-    
+  changeVideo: function (path) {
+    console.log('hello', path);
+    document.getElementById("video").video.src = path.toString();
+    document.getElementById("video").video.load();
+
   },
 
   doLoad: function () {
@@ -37,9 +38,9 @@ let processor = {
     this.alpha = 255;
     this.frameCount = 0;
     this.frameStatic = undefined;
-    this.frameMix = undefined; 
-    if (this.video.readyState === 4) {
-      let loop = document.getElementById("video").getAttribute(loop).value;
+    this.frameMix = undefined;
+    if (this.video && this.video.readyState === 4) {
+      // let loop = document.getElementById("video").getAttribute(loop).value;
     }
 
     let self = this;
@@ -82,97 +83,163 @@ let processor = {
     return loop
   },
 
+  setFirstFrame: function () {
+    return new Promise((res, rej) => {
+      res(this.ctx1.drawImage(this.video, 0, 0, this.c1.width, this.c1.height), console.log("setFirstFrame"))
+      rej("error setFirstFrame")
+    })
+
+  },
+
+  getStaticFrame: function () {
+    return new Promise((res, rej) => {
+      res(this.frameStatic = this.ctx1.getImageData(0, 0, this.c1.width, this.c1.height), console.log("getStaticFrame"));
+      rej("error getStaticFrame")
+    })
+  },
+
+  getMixFrame: function () {
+    return new Promise((res, rej) => {
+      res(this.frameMix = this.ctx2.getImageData(0, 0, this.mix.width, this.mix.height), console.log("getMixedFrame"));
+      rej("error getMixedFrame")
+    })
+  },
+
   displaySingleFrame: function () {
-    this.ctx2.drawImage(this.video, 0, 0, this.mix.width, this.mix.height);
-    let frameMix = this.ctx2.getImageData(0, 0, this.mix.width, this.mix.height);
-    img = new Image();
-    pic = this.c2.toDataURL();
-    img.src = pic;
-    document.getElementById('canvasGroup').appendChild(img);
-  },
+    return new Promise((res, rej) => {
 
-  setFirstFrame:  function () {
-    if (this.video.currentTime < 0.1) {
-      this.ctx1.drawImage(this.video, 0, 0, this.c1.width, this.c1.height);
-    }
-  },
-
-  getStaticFrame: function(){
-    this.frameStatic = this.ctx1.getImageData(0, 0, this.c1.width, this.c1.height);
-
-  },
-
-  getMixFrame: function(){
-    this.frameMix = this.ctx2.getImageData(0, 0, this.mix.width, this.mix.height);
-
-  },
-
-  compare : function(){
-    let l = this.frameMix.data.length / 4;
-
-    for (let i = 0; i < l; i++) {
-      let r = this.frameMix.data[i * 4 + 0];
-      let g = this.frameMix.data[i * 4 + 1];
-      let b = this.frameMix.data[i * 4 + 2];
-
-      let r2 = this.frameStatic.data[i * 4 + 0];
-      let g2 = this.frameStatic.data[i * 4 + 1];
-      let b2 = this.frameStatic.data[i * 4 + 2];
-
-      if (r < (r2 + this.threshold) && r > (r2 - this.threshold)
-        && g < (g2 + this.threshold) && g > (g2 - this.threshold)
-        && b < (b2 + this.threshold) && b > (b2 - this.threshold)
-      ) {
-        this.frameMix.data[i * 4 + 0] = this.red;
-        this.frameMix.data[i * 4 + 1] = this.green;
-        this.frameMix.data[i * 4 + 2] = this.blue;
-        this.frameMix.data[i * 4 + 3] = this.alpha;
+      var context2 = this.ctx2;
+      var mixContext = this.mix;
+      var canvas2 = this.c2;
+      res(sortItOutNow(context2,mixContext,canvas2), console.log("displaySingleFrame"))
+      function sortItOutNow() {
+        context2.drawImage(this.video, 0, 0, mixContext.width, mixContext.height);
+        let frameMix = context2.getImageData(0, 0, mixContext.width, mixContext.height);
+        img = new Image();
+        pic = canvas2.toDataURL();
+        img.src = pic;
+        document.getElementById('canvasGroup').appendChild(img);
+        console.log(document.getElementById('canvasGroup').appendChild(img));
+        
       }
-    }
+      rej("error displaySingleFrame")
+    })
   },
 
-  paintMix: function(){
-    this.ctxMix.putImageData(this.frameMix, 0, 0);
+  compare: function () {
+    return new Promise((res, rej) => {
+      
+      res(compareOperation, console.log("compare"));
+      function compareOperation() {
+        let l = this.frameMix.data.length / 4;
+
+        for (let i = 0; i < l; i++) {
+          let r = this.frameMix.data[i * 4 + 0];
+          let g = this.frameMix.data[i * 4 + 1];
+          let b = this.frameMix.data[i * 4 + 2];
+
+          let r2 = this.frameStatic.data[i * 4 + 0];
+          let g2 = this.frameStatic.data[i * 4 + 1];
+          let b2 = this.frameStatic.data[i * 4 + 2];
+
+          if (r < (r2 + this.threshold) && r > (r2 - this.threshold)
+            && g < (g2 + this.threshold) && g > (g2 - this.threshold)
+            && b < (b2 + this.threshold) && b > (b2 - this.threshold)
+          ) {
+            this.frameMix.data[i * 4 + 0] = this.red;
+            this.frameMix.data[i * 4 + 1] = this.green;
+            this.frameMix.data[i * 4 + 2] = this.blue;
+            this.frameMix.data[i * 4 + 3] = this.alpha;
+          }
+        }
+      }
+      rej("error compare")
+    })
   },
+
+  paintMix: function () {
+    return new Promise((res, rej) => {
+
+      res(this.ctxMix.putImageData(this.frameMix, 0, 0), console.log("paint mix"));
+      rej("error compare")
+    })
+  },
+
+  // passFrame: async function () {
+  //   return new Promise((res, rej) => {
+
+  //     function passFrameOperation() {
+  //       if (this.video.currentTime < this.video.duration) {
+  //         this.pushToFinal();
+  //         this.passOneFrame();
+  //         this.frameCount += .3;
+  //         this.computeFrame();
+  //       } else {
+  //         console.log("video ended");
+  //         this.logfinal();
+  //       }
+  //     }
+  //     res(passFrameOperation, console.log("passFrame"));
+  //     rej("error passFrame")
+  //   })
+  // },
 
   computeFrame: async function () {
-    await this.setFirstFrame();
+    if (this.video.currentTime < 0.1) {
+
+      await this.setFirstFrame();
+    }
     await this.getStaticFrame();
     await this.getMixFrame();
     await this.displaySingleFrame();
     await this.compare();
     await this.paintMix();
-    await this.passFrame();
-  },
-
-  passFrame: async function () {
+    // await this.passFrame();
     if (this.video.currentTime < this.video.duration) {
       await this.pushToFinal();
       await this.passOneFrame();
-       this.frameCount += .3;
-      this.computeFrame();
+      await this.moveFrameAhead();
+      await this.computeFrame();
     } else {
-      console.log("video ended");
       await this.logfinal();
     }
   },
 
-  passOneFrame: function(){
-    // this.video.currentTime += .1 ;
-    this.video.play();
-    let self = this;
-    this.video.addEventListener('canplay', function() {
-      self.currentTime = self.frameCount/self.video.duration;
-    });
-    console.log("passing to ",this.video.currentTime, "  duration : ", this.video.duration);
-    
+  pushToFinal: function () {
+    return new Promise((res, rej) => {
+
+      res(pushToFinalOperation, console.log("pushToFinal"));
+      function pushToFinalOperation() {
+        let pic = new Image();
+        pic = this.mix.toDataURL();
+        this.finalImage.push(pic);
+      }
+      rej("error pushToFinal")
+    })
   },
 
-  pushToFinal: function () {
-    let pic = new Image();
-    pic = this.mix.toDataURL();
-    this.finalImage.push(pic);
+  passOneFrame: function () {
+    return new Promise((res, rej) => {
+      
+      res(passOneFrameOperation, console.log("passOneFrame"));
+      function passOneFrameOperation() {
+        // this.video.play();
+        // let self = this;
+        // this.video.addEventListener('canplay', function () {
+        //   self.currentTime = self.frameCount / self.video.duration;
+        //   console.log("passing to ", this.video.currentTime, "  duration : ", this.video.duration);
+        // });
+      }
 
+      rej("error passOneFrame")
+    })
+  },
+
+  moveFrameAhead: function () {
+    return new Promise((res, rej) => {
+      res(this.frameCount += .8, console.log("moveFrameAhead",this.frameCount,this.video.currentTime ));
+      rej("error moveFrameAhead")
+    })
   },
 
   revokeURL: function (e) {
@@ -180,14 +247,21 @@ let processor = {
   },
 
   logfinal: function () {
-    for (let i = 0; i < this.finalImage.length; i += 2) {
-      console.log('logFinal i:', i);
-      img = new Image();
-      img.src = this.finalImage[i].toString();
-      document.getElementById('canvasGroup').appendChild(img);
-      console.log(document.getElementById('canvasGroup'), img);
-    }
-    console.log('fin');
+    return new Promise((res, rej) => {
+
+      function logFinalOperation() {
+        for (let i = 0; i < this.finalImage.length; i += 2) {
+          console.log('logFinal i:', i);
+          img = new Image();
+          img.src = this.finalImage[i].toString();
+          document.getElementById('canvasGroup').appendChild(img);
+          console.log(document.getElementById('canvasGroup'), img);
+        }
+        console.log('fin');
+      }
+      res(logFinalOperation, console.log("logFinalOperation"));
+      rej("error logFinalOperation")
+    })
   }
 }
 
@@ -197,6 +271,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 document.getElementById('video').addEventListener("ended", () => {
   processor.logfinal();
+});
+
+document.getElementById('video').addEventListener("loaded", () => {
+  processor.doLoad();
 });
 
 document.getElementById("red-slider").addEventListener("change", () => {
