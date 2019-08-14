@@ -1,4 +1,5 @@
 let processor = {
+
   timerCallback: function () {
     if (this.video.paused || this.video.ended) {
       return;
@@ -14,63 +15,62 @@ let processor = {
     console.log('hello', path);
     document.getElementById("video").video.src = path.toString();
     document.getElementById("video").video.load();
-
   },
 
   doLoad: function () {
+    //canvas
     this.video = document.getElementById("video");
-    // this.video.setAttribute("hidden", true);
     this.c1 = document.getElementById("c1");
     this.ctx1 = this.c1.getContext("2d");
     this.c2 = document.getElementById("c2");
     this.ctx2 = this.c2.getContext("2d");
+    //create mix
     this.mix = document.createElement('canvas');
-    // this.mix.setAttribute("hidden", true);
     this.mix.width = this.c1.width;
     this.mix.height = this.c1.height;
     this.ctxMix = this.mix.getContext("2d");
     document.getElementById('canvasGroup').appendChild(this.mix);
+    //image componentes
     this.threshold = 35;
     this.finalImage = [];
     this.red = 128;
-    this.gree = 128;
+    this.green = 128;
     this.blue = 128;
-    this.alpha = 255;
-    this.frameCount = 0;
+    this.alpha = 128;
     this.frameStatic = undefined;
     this.frameMix = undefined;
-    if (this.video && this.video.readyState === 4) {
-      // let loop = document.getElementById("video").getAttribute(loop).value;
-    }
 
     let self = this;
     this.video.addEventListener("play", function () {
       self.width = self.video.videoWidth / 2;
       self.height = self.video.videoHeight / 2;
-      self.computeFrame();
-    }, false);
-
-    this.video.addEventListener("seeked", function () {
-      console.log("seeked at frame: ", self.frameCount);
-      self.video.pause();
+      self.timerCallback();
     }, false);
   },
 
-  changeRed: function (value) {
-    this.red = value;
+  computeFrame: async function () {
 
-  },
-
-  changeGreen: function (value) {
-    this.green = value;
-  },
-
-  changeBlue: function (value) {
-    this.blue = value;
-  },
-
-  changeAlpha: function (value) {
-    this.alpha = value;
+    if (this.video.currentTime < 0.1) {
+      await this.setFirstFrame();
+    }
+    await this.getStaticFrame();
+    await this.getMixFrame();
+    await this.displaySingleFrame();
+    await this.compare();
+    await this.paintMix();
+    // if (this.video.currentTime < this.video.duration) {
+    //   console.log("here!", this.video.currentTime);
+    console.log("time", this.video.currentTime)
+    await this.pushImageToArray();
+    if (this.video.currentTime >= this.video.duration) {
+      this.video.pause();
+      await this.logfinal();
+      return;
+    }
+      // await this.moveFrameAhead();
+      // this.computeFrame();
+    // } else {
+    // }
   },
 
   changeLoop: function (loop) {
@@ -111,7 +111,7 @@ let processor = {
       var context2 = this.ctx2;
       var mixContext = this.mix;
       var canvas2 = this.c2;
-      res(sortItOutNow(context2,mixContext,canvas2), console.log("displaySingleFrame"))
+      res(sortItOutNow(context2, mixContext, canvas2), console.log("displaySingleFrame"))
       function sortItOutNow() {
         context2.drawImage(this.video, 0, 0, mixContext.width, mixContext.height);
         let frameMix = context2.getImageData(0, 0, mixContext.width, mixContext.height);
@@ -119,8 +119,8 @@ let processor = {
         pic = canvas2.toDataURL();
         img.src = pic;
         document.getElementById('canvasGroup').appendChild(img);
-        console.log(document.getElementById('canvasGroup').appendChild(img));
-        
+        // console.log(document.getElementById('canvasGroup').appendChild(img));
+
       }
       rej("error displaySingleFrame")
     })
@@ -128,28 +128,35 @@ let processor = {
 
   compare: function () {
     return new Promise((res, rej) => {
-      
-      res(compareOperation, console.log("compare"));
+      var frameMixOp = this.frameMix;
+      var frameStaticOp = this.frameStatic;
+      var thresholdOp = this.threshold;
+      var redOp = this.red;
+      var blueOp = this.blue;
+      var greenOp = this.green;
+      var alphaOp = this.alpha;
+
+      res(compareOperation(frameMixOp, frameStaticOp, thresholdOp, redOp, blueOp, greenOp, alphaOp), console.log("compare"));
       function compareOperation() {
-        let l = this.frameMix.data.length / 4;
+        let l = frameMixOp.data.length / 4;
 
         for (let i = 0; i < l; i++) {
-          let r = this.frameMix.data[i * 4 + 0];
-          let g = this.frameMix.data[i * 4 + 1];
-          let b = this.frameMix.data[i * 4 + 2];
+          let r = frameMixOp.data[i * 4 + 0];
+          let g = frameMixOp.data[i * 4 + 1];
+          let b = frameMixOp.data[i * 4 + 2];
 
-          let r2 = this.frameStatic.data[i * 4 + 0];
-          let g2 = this.frameStatic.data[i * 4 + 1];
-          let b2 = this.frameStatic.data[i * 4 + 2];
+          let r2 = frameStaticOp.data[i * 4 + 0];
+          let g2 = frameStaticOp.data[i * 4 + 1];
+          let b2 = frameStaticOp.data[i * 4 + 2];
 
-          if (r < (r2 + this.threshold) && r > (r2 - this.threshold)
-            && g < (g2 + this.threshold) && g > (g2 - this.threshold)
-            && b < (b2 + this.threshold) && b > (b2 - this.threshold)
+          if (r < (r2 + thresholdOp) && r > (r2 - thresholdOp)
+            && g < (g2 + thresholdOp) && g > (g2 - thresholdOp)
+            && b < (b2 + thresholdOp) && b > (b2 - thresholdOp)
           ) {
-            this.frameMix.data[i * 4 + 0] = this.red;
-            this.frameMix.data[i * 4 + 1] = this.green;
-            this.frameMix.data[i * 4 + 2] = this.blue;
-            this.frameMix.data[i * 4 + 3] = this.alpha;
+            frameMixOp.data[i * 4 + 0] = redOp;
+            frameMixOp.data[i * 4 + 1] = greenOp;
+            frameMixOp.data[i * 4 + 2] = blueOp;
+            frameMixOp.data[i * 4 + 3] = alphaOp;
           }
         }
       }
@@ -164,6 +171,103 @@ let processor = {
       rej("error compare")
     })
   },
+
+  moveFrameAhead: function () {
+    return new Promise((res, rej) => {
+      res(this.video.currentTime += .02,
+        this.video.addEventListener("seeked", res, false), console.log("moveFrameAhead", this.video.currentTime));
+      rej("error moveFrameAhead")
+    })
+  },
+
+  pushImageToArray: function () {
+    return new Promise((res, rej) => {
+
+      var mixOp = this.mix;
+      var finalImageOp = this.finalImage;
+      res(pushToFinalOperation(mixOp, finalImageOp), console.log("pushToFinal"));
+      function pushToFinalOperation() {
+        let pic = new Image();
+        pic = mixOp.toDataURL();
+        finalImageOp.push(pic);
+      }
+      rej("error pushToFinal")
+    })
+  },
+
+  logfinal: function () {
+    return new Promise((res, rej) => {
+
+      var finalImageOp = this.finalImage;
+      res(logFinalOperation(), console.log("logFinalOperation"));
+      function logFinalOperation() {
+        for (let i = 1; i < finalImageOp.length; i += 2) {
+          console.log('logFinal i:', i, finalImageOp[i].toString());
+          img = new Image();
+          img.src = finalImageOp[i].toString();
+          document.getElementById('canvasGroup').appendChild(img);
+          // console.log(document.getElementById('canvasGroup'), img);
+        }
+      }
+      rej("error logFinalOperation")
+    })
+  },
+
+  //TOOLS components
+  changeRed: function (value) {
+    this.red = value;
+  },
+
+  changeGreen: function (value) {
+    this.green = value;
+  },
+
+  changeBlue: function (value) {
+    this.blue = value;
+  },
+
+  changeAlpha: function (value) {
+    this.alpha = value;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  processor.doLoad();
+});
+
+// document.getElementById('video').addEventListener("ended", () => {
+//   processor.logfinal();
+// });
+
+document.getElementById('video').addEventListener("loaded", () => {
+  processor.doLoad();
+});
+
+document.getElementById("red-slider").addEventListener("change", () => {
+  processor.changeRed(document.getElementById("red-slider").value);
+});
+
+document.getElementById("green-slider").addEventListener("change", () => {
+  processor.changeGreen(document.getElementById("green-slider").value);
+});
+
+
+document.getElementById("blue-slider").addEventListener("change", () => {
+  processor.changeBlue(document.getElementById("blue-slider").value);
+});
+
+document.getElementById("alpha-slider").addEventListener("change", () => {
+  processor.changeAlpha(document.getElementById("alpha-slider").value);
+});
+
+document.getElementById("loop-checkbox").addEventListener("change", () => {
+  console.log(document.getElementById("video").getAttribute("loop"));
+  document.getElementById("video").setAttribute("loop", processor.changeLoop(document.getElementById("video").getAttribute("loop")))
+});
+
+document.getElementById("play-button").addEventListener("click", () => {
+  processor.computeFrame();
+});
 
   // passFrame: async function () {
   //   return new Promise((res, rej) => {
@@ -184,121 +288,23 @@ let processor = {
   //   })
   // },
 
-  computeFrame: async function () {
-    if (this.video.currentTime < 0.1) {
 
-      await this.setFirstFrame();
-    }
-    await this.getStaticFrame();
-    await this.getMixFrame();
-    await this.displaySingleFrame();
-    await this.compare();
-    await this.paintMix();
-    // await this.passFrame();
-    if (this.video.currentTime < this.video.duration) {
-      await this.pushToFinal();
-      await this.passOneFrame();
-      await this.moveFrameAhead();
-      await this.computeFrame();
-    } else {
-      await this.logfinal();
-    }
-  },
+      // if (this.video && this.video.readyState === 4) {
+    //   let loop = document.getElementById("video").getAttribute(loop).value;
+    // }
 
-  pushToFinal: function () {
-    return new Promise((res, rej) => {
+    // let self = this;
+    // this.video.addEventListener("play", function () {
+    //   self.width = self.video.videoWidth / 2;
+    //   self.height = self.video.videoHeight / 2;
+    //   self.computeFrame();
+    // }, false);
 
-      res(pushToFinalOperation, console.log("pushToFinal"));
-      function pushToFinalOperation() {
-        let pic = new Image();
-        pic = this.mix.toDataURL();
-        this.finalImage.push(pic);
-      }
-      rej("error pushToFinal")
-    })
-  },
-
-  passOneFrame: function () {
-    return new Promise((res, rej) => {
-      
-      res(passOneFrameOperation, console.log("passOneFrame"));
-      function passOneFrameOperation() {
-        // this.video.play();
-        // let self = this;
-        // this.video.addEventListener('canplay', function () {
-        //   self.currentTime = self.frameCount / self.video.duration;
-        //   console.log("passing to ", this.video.currentTime, "  duration : ", this.video.duration);
-        // });
-      }
-
-      rej("error passOneFrame")
-    })
-  },
-
-  moveFrameAhead: function () {
-    return new Promise((res, rej) => {
-      res(this.frameCount += .8, console.log("moveFrameAhead",this.frameCount,this.video.currentTime ));
-      rej("error moveFrameAhead")
-    })
-  },
-
-  revokeURL: function (e) {
-    URL.revokeObjectURL(this.src);
-  },
-
-  logfinal: function () {
-    return new Promise((res, rej) => {
-
-      function logFinalOperation() {
-        for (let i = 0; i < this.finalImage.length; i += 2) {
-          console.log('logFinal i:', i);
-          img = new Image();
-          img.src = this.finalImage[i].toString();
-          document.getElementById('canvasGroup').appendChild(img);
-          console.log(document.getElementById('canvasGroup'), img);
-        }
-        console.log('fin');
-      }
-      res(logFinalOperation, console.log("logFinalOperation"));
-      rej("error logFinalOperation")
-    })
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  processor.doLoad();
-});
-
-document.getElementById('video').addEventListener("ended", () => {
-  processor.logfinal();
-});
-
-document.getElementById('video').addEventListener("loaded", () => {
-  processor.doLoad();
-});
-
-document.getElementById("red-slider").addEventListener("change", () => {
-  processor.changeRed(document.getElementById("red-slider").value);
-});
-
-document.getElementById("green-slider").addEventListener("change", () => {
-  processor.changeGreen(document.getElementById("green-slider").value);
-});
+    // this.video.addEventListener("seeked", function () {
+    //   console.log("seeked at frame: ", self.frameCount);
+    //   self.video.pause();
+    // }, false);
 
 
-document.getElementById("blue-slider").addEventListener("change", () => {
-  processor.changeBlue(document.getElementById("blue-slider").value);
-});
 
-document.getElementById("alpha-slider").addEventListener("change", () => {
-  processor.changeBlue(document.getElementById("alpha-slider").value);
-});
 
-document.getElementById("loop-checkbox").addEventListener("change", () => {
-  console.log(document.getElementById("video").getAttribute("loop"));
-  document.getElementById("video").setAttribute("loop", processor.changeLoop(document.getElementById("video").getAttribute("loop")))
-});
-
-document.getElementById("play-button").addEventListener("click", () => {
-  processor.computeFrame();
-});
