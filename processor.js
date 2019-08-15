@@ -26,6 +26,7 @@ let processor = {
     this.ctx2 = this.c2.getContext("2d");
     //create mix
     this.mix = document.createElement('canvas');
+    this.mix.id = "mix";
     this.mix.width = this.c1.width;
     this.mix.height = this.c1.height;
     this.ctxMix = this.mix.getContext("2d");
@@ -65,10 +66,11 @@ let processor = {
     if (this.video.currentTime >= this.video.duration) {
       this.video.pause();
       await this.logfinal();
+      await this.mixfinal();
       return;
     }
-      // await this.moveFrameAhead();
-      // this.computeFrame();
+    // await this.moveFrameAhead();
+    // this.computeFrame();
     // } else {
     // }
   },
@@ -197,19 +199,108 @@ let processor = {
 
   logfinal: function () {
     return new Promise((res, rej) => {
-
       var finalImageOp = this.finalImage;
       res(logFinalOperation(), console.log("logFinalOperation"));
       function logFinalOperation() {
         for (let i = 1; i < finalImageOp.length; i += 2) {
-          console.log('logFinal i:', i, finalImageOp[i].toString());
+          // console.log('logFinal i:', i, finalImageOp[i].toString());
           img = new Image();
           img.src = finalImageOp[i].toString();
           document.getElementById('canvasGroup').appendChild(img);
-          // console.log(document.getElementById('canvasGroup'), img);
         }
       }
       rej("error logFinalOperation")
+    })
+  },
+
+  mixfinal: function () {
+    return new Promise((res, rej) => {
+      console.log(this.finalImage.length);
+
+      var finalImageOp = this.finalImage;
+      var firstCanvas = this.c1;
+      var secondCanvas = this.c2;
+      var thirdCanvas = this.mix;
+      var thresholdOp = this.threshold;
+      res(mixfinalOperation(firstCanvas, secondCanvas, thirdCanvas,thresholdOp), console.log("mixFinal"));
+      
+
+      function mixfinalOperation(firstCanvas, secondCanvas, thirdCanvas,thresholdOp) {
+        var firstCanvasCtx = firstCanvas.getContext('2d');
+        var firstCanvasCtxData = firstCanvasCtx.getImageData(0, 0, firstCanvas.width, firstCanvas.height)
+        var secondCanvasCtx = secondCanvas.getContext('2d');
+        var thirdCanvasCtx = thirdCanvas.getContext('2d');
+        var thirdCanvasCtxData = thirdCanvasCtx.getImageData(0, 0, thirdCanvas.width, thirdCanvas.height)
+        
+        for (let i = 0; i < finalImageOp.length; i += 1) {
+          // if (i === 0) {
+
+          // var image = new Image();
+          // image.src = finalImageOp[i];
+
+          // console.log(finalImageOp[i].toString());
+          
+          let l = finalImageOp[i].length / 4;
+
+          
+
+
+
+          for (let i = 0; i < l; i++) {
+            var secondCanvasCtxData = secondCanvasCtx.getImageData(0, 0, secondCanvas.width, secondCanvas.height)
+            
+            let r = secondCanvasCtxData.data[i * 4 + 0];
+            let g = secondCanvasCtxData.data[i * 4 + 1];
+            let b = secondCanvasCtxData.data[i * 4 + 2];
+
+            let r2 = firstCanvasCtxData.data[i * 4 + 0];
+            let g2 = firstCanvasCtxData.data[i * 4 + 1];
+            let b2 = firstCanvasCtxData.data[i * 4 + 2];
+  
+            if (r < (r2 + thresholdOp) && r > (r2 - thresholdOp)
+              && g < (g2 + thresholdOp) && g > (g2 - thresholdOp)
+              && b < (b2 + thresholdOp) && b > (b2 - thresholdOp)
+            ) {
+              thirdCanvasCtxData.data[i * 4 + 0] = secondCanvasCtxData.data[i * 4 + 0];
+              thirdCanvasCtxData.data[i * 4 + 1] = secondCanvasCtxData.data[i * 4 + 1];
+              thirdCanvasCtxData.data[i * 4 + 2] = secondCanvasCtxData.data[i * 4 + 2];
+              // thirdCanvasCtxData.data[i * 4 + 3] = secondCanvasCtxData.data[i * 4 + 3];
+              thirdCanvasCtx.putImageData(thirdCanvasCtxData,0,0);
+            }
+          }
+
+          // image.onload = function () {
+            thirdCanvas.id="fuck";
+            // thirdCanvasCtx.drawImage(image, 0,0);
+            // var data = thirdCanvas.getImageData(0,0,thirdCanvas.width,thirdCanvas.height);
+            // console.log(data);
+          // };
+          // } else {
+          //   console.log("dos");
+          //   var image2 = new Image();
+          //   image2.src = secondCanvas.toDataURL();
+          //   thirdCanvas.putImageData(image2, 0,0);
+          // }
+        }
+
+        //TEST TEST TEST
+        //   var imgTag = document.createElement('img');
+        //   imgTag.src = "./foo.png";        
+        //   document.getElementById('canvasGroup').appendChild(imgTag);
+        //   mixA = document.createElement('canvas');
+        //   mixA.id = "mixA";
+        //   ctxMixA = mixA.getContext('2d');
+        //   imgTag.onload = function() {
+        //     mixA.width = imgTag.width;
+        //     mixA.height = imgTag.height;
+        //     ctxMixA.drawImage(imgTag,0,0);
+        //     document.getElementById('canvasGroup').appendChild(mixA);
+        //     var myData = ctxMixA.getImageData(0, 0, mixA.width, mixA.height);
+        //     console.log(myData);
+        // };
+
+      }
+      rej("error mixFinalOperation")
     })
   },
 
