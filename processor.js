@@ -32,12 +32,12 @@ let processor = {
     this.ctxMix = this.mix.getContext("2d");
     document.getElementById('canvasGroup').appendChild(this.mix);
     //image componentes
-    this.threshold = 35;
+    this.threshold = 1;
     this.finalImage = [];
-    this.red = 128;
-    this.green = 128;
-    this.blue = 128;
-    this.alpha = 128;
+    this.red = 255;
+    this.green = 0;
+    this.blue = 0;
+    this.alpha = 255;
     this.frameStatic = undefined;
     this.frameMix = undefined;
 
@@ -65,7 +65,7 @@ let processor = {
     await this.pushImageToArray();
     if (this.video.currentTime >= this.video.duration) {
       this.video.pause();
-      await this.logfinal();
+      // await this.logfinal();
       await this.mixfinal();
       return;
     }
@@ -116,11 +116,11 @@ let processor = {
       res(sortItOutNow(context2, mixContext, canvas2), console.log("displaySingleFrame"))
       function sortItOutNow() {
         context2.drawImage(this.video, 0, 0, mixContext.width, mixContext.height);
-        let frameMix = context2.getImageData(0, 0, mixContext.width, mixContext.height);
-        img = new Image();
-        pic = canvas2.toDataURL();
-        img.src = pic;
-        document.getElementById('canvasGroup').appendChild(img);
+        // let frameMix = context2.getImageData(0, 0, mixContext.width, mixContext.height);
+        // img = new Image();
+        // pic = canvas2.toDataURL();
+        // img.src = pic;
+        // document.getElementById('canvasGroup').appendChild(img);
         // console.log(document.getElementById('canvasGroup').appendChild(img));
 
       }
@@ -155,9 +155,9 @@ let processor = {
             && g < (g2 + thresholdOp) && g > (g2 - thresholdOp)
             && b < (b2 + thresholdOp) && b > (b2 - thresholdOp)
           ) {
-            frameMixOp.data[i * 4 + 0] = redOp;
-            frameMixOp.data[i * 4 + 1] = greenOp;
-            frameMixOp.data[i * 4 + 2] = blueOp;
+            // frameMixOp.data[i * 4 + 0] = redOp;
+            // frameMixOp.data[i * 4 + 1] = greenOp;
+            // frameMixOp.data[i * 4 + 2] = blueOp;
             frameMixOp.data[i * 4 + 3] = alphaOp;
           }
         }
@@ -215,90 +215,74 @@ let processor = {
 
   mixfinal: function () {
     return new Promise((res, rej) => {
-      console.log(this.finalImage.length);
+      console.log("lenght of images array", this.finalImage.length);
 
       var finalImageOp = this.finalImage;
-      var firstCanvas = this.c1;
+      // var firstCanvas = this.c1;
       var secondCanvas = this.c2;
       var thirdCanvas = this.mix;
       var thresholdOp = this.threshold;
-      res(mixfinalOperation(firstCanvas, secondCanvas, thirdCanvas,thresholdOp), console.log("mixFinal"));
-      
 
-      function mixfinalOperation(firstCanvas, secondCanvas, thirdCanvas,thresholdOp) {
-        var firstCanvasCtx = firstCanvas.getContext('2d');
-        var firstCanvasCtxData = firstCanvasCtx.getImageData(0, 0, firstCanvas.width, firstCanvas.height)
+      res(mixfinalOperation(secondCanvas, thirdCanvas, thresholdOp), console.log("mixFinal"));
+
+      function mixfinalOperation(secondCanvas, thirdCanvas, thresholdOp) {
+        // var firstCanvasCtx = firstCanvas.getContext('2d');
+        // var firstCanvasCtxData = firstCanvasCtx.getImageData(0, 0, firstCanvas.width, firstCanvas.height)
         var secondCanvasCtx = secondCanvas.getContext('2d');
+        var secondCanvasCtxData = secondCanvasCtx.getImageData(0, 0, secondCanvas.width, secondCanvas.height)
         var thirdCanvasCtx = thirdCanvas.getContext('2d');
         var thirdCanvasCtxData = thirdCanvasCtx.getImageData(0, 0, thirdCanvas.width, thirdCanvas.height)
-        
-        for (let i = 0; i < finalImageOp.length; i += 1) {
-          // if (i === 0) {
 
-          // var image = new Image();
-          // image.src = finalImageOp[i];
 
-          // console.log(finalImageOp[i].toString());
+
+
+
+        //Mix Canvas
+        var imageDataMix = thirdCanvasCtx.getImageData(0, 0, thirdCanvas.width, thirdCanvas.height);
+
+        for (let x = 0; x < finalImageOp.length; x += 1) {
+          //Second Canvas
+          var img = new Image();
+          img.src = finalImageOp[x];
+          secondCanvasCtx.drawImage(img, 0, 0);
+          var imageDataSecond = secondCanvasCtx.getImageData(0, 0, secondCanvas.width, secondCanvas.height);
+          var pixelsSecond = imageDataSecond.data;
+
+          // console.log((imageDataMix.data));
+
+          var c = imageDataMix.data;
+
+
+          for (let i = 0; i < pixelsSecond.length; i += 4) {
+
+            let r2 = pixelsSecond[i * 4 + 0];
+            let g2 = pixelsSecond[i * 4 + 1];
+            let b2 = pixelsSecond[i * 4 + 2];
+
+            let r = imageDataMix.data[i * 4 + 0];
+            let g = imageDataMix.data[i * 4 + 1];
+            let b = imageDataMix.data[i * 4 + 2];
+
+            // if (r < (r2 + thresholdOp) && r > (r2 - thresholdOp)
+            //   && g < (g2 + thresholdOp) && g > (g2 - thresholdOp)
+            //   && b < (b2 + thresholdOp) && b > (b2 - thresholdOp)
+
+            if(r!== r2 || g!== g2 || b!== b2
           
-          let l = finalImageOp[i].length / 4;
-
-          
-
-
-
-          for (let i = 0; i < l; i++) {
-            var secondCanvasCtxData = secondCanvasCtx.getImageData(0, 0, secondCanvas.width, secondCanvas.height)
-            
-            let r = secondCanvasCtxData.data[i * 4 + 0];
-            let g = secondCanvasCtxData.data[i * 4 + 1];
-            let b = secondCanvasCtxData.data[i * 4 + 2];
-
-            let r2 = firstCanvasCtxData.data[i * 4 + 0];
-            let g2 = firstCanvasCtxData.data[i * 4 + 1];
-            let b2 = firstCanvasCtxData.data[i * 4 + 2];
-  
-            if (r < (r2 + thresholdOp) && r > (r2 - thresholdOp)
-              && g < (g2 + thresholdOp) && g > (g2 - thresholdOp)
-              && b < (b2 + thresholdOp) && b > (b2 - thresholdOp)
             ) {
-              thirdCanvasCtxData.data[i * 4 + 0] = secondCanvasCtxData.data[i * 4 + 0];
-              thirdCanvasCtxData.data[i * 4 + 1] = secondCanvasCtxData.data[i * 4 + 1];
-              thirdCanvasCtxData.data[i * 4 + 2] = secondCanvasCtxData.data[i * 4 + 2];
-              // thirdCanvasCtxData.data[i * 4 + 3] = secondCanvasCtxData.data[i * 4 + 3];
-              thirdCanvasCtx.putImageData(thirdCanvasCtxData,0,0);
+              // console.log("dif",r,r2);
+              
+              imageDataMix.data[i * 4 + 0] = 255;
+              imageDataMix.data[i * 4 + 1] = g2;
+              imageDataMix.data[i * 4 + 2] = b2;
+              
             }
           }
 
-          // image.onload = function () {
-            thirdCanvas.id="fuck";
-            // thirdCanvasCtx.drawImage(image, 0,0);
-            // var data = thirdCanvas.getImageData(0,0,thirdCanvas.width,thirdCanvas.height);
-            // console.log(data);
-          // };
-          // } else {
-          //   console.log("dos");
-          //   var image2 = new Image();
-          //   image2.src = secondCanvas.toDataURL();
-          //   thirdCanvas.putImageData(image2, 0,0);
-          // }
+          
         }
-
-        //TEST TEST TEST
-        //   var imgTag = document.createElement('img');
-        //   imgTag.src = "./foo.png";        
-        //   document.getElementById('canvasGroup').appendChild(imgTag);
-        //   mixA = document.createElement('canvas');
-        //   mixA.id = "mixA";
-        //   ctxMixA = mixA.getContext('2d');
-        //   imgTag.onload = function() {
-        //     mixA.width = imgTag.width;
-        //     mixA.height = imgTag.height;
-        //     ctxMixA.drawImage(imgTag,0,0);
-        //     document.getElementById('canvasGroup').appendChild(mixA);
-        //     var myData = ctxMixA.getImageData(0, 0, mixA.width, mixA.height);
-        //     console.log(myData);
-        // };
-
+        console.log(imageDataMix.data);
+        thirdCanvasCtx.putImageData(imageDataMix,0,0);
       }
       rej("error mixFinalOperation")
     })
