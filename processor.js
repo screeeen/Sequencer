@@ -227,6 +227,12 @@ let processor = {
       res(mixfinalOperationD(), console.log("mixFinalDiff"));
 
       function mixfinalOperationD() {
+        
+        var cv = document.createElement('canvas');
+        cv.id = 'manolo';
+        var cvx = cv.getContext('2d');
+
+
         for (let x = 0; x < finalImageOp.length; x += 1) {
 
           var img = new Image();
@@ -235,47 +241,30 @@ let processor = {
           var imageDataSecond = secondCanvasCtx.getImageData(0, 0, secondCanvas.width, secondCanvas.height);
           var pixelsSecond = imageDataSecond.data;
 
-          img = new Image();
-          img.src = finalImageOp[x].toString();
-          document.getElementById('canvasGroup').appendChild(img);
+          // img = new Image();
+          // img.src = finalImageOp[x].toString();
+          // document.getElementById('canvasGroup').appendChild(img);
 
 
 
-          // var cv = document.createElement('canvas');
-          // cv.id = 'manolo';
-          // var cvx = cv.getContext('2d');
-          // var imgxx = new Image();
-          // imgxx.src = finalImageOp[x];
-          // cvx.drawImage(imgxx, 0, 0);
-          // document.getElementById('canvasGroup').appendChild(cv);
+          var imgxx = new Image();
+          imgxx.src = finalImageOp[x];
+          cvx.drawImage(imgxx, 0, 0);
+          document.getElementById('canvasGroup').appendChild(cv);
 
 
           for (let i = 1; i < pixelsSecond.length; i += 1) {
             let r = pixelsSecond[i];
-            // let g = pixelsSecond[i];
-            // let b = pixelsSecond[i];
-
             let rp = pixelsSecond[0];
-            // let gp = pixelsSecond[1];
-            // let bp = pixelsSecond[2];
-
             if (r === rp) {
               continue;
             } else {
               imageDataMix.data[i] = r;
-              // imageDataMix.data[i] = g;
-              // imageDataMix.data[i] = b; 
-              // imageDataMix.data[i] = 255;
             }
           }
-          // thirdCanvasCtx.save()
-          // thirdCanvasCtx.globalCompositeOperation="destination-atop";
-          // thirdCanvasCtx.putImageData(imageDataMix, 0, 0);
-          // thirdCanvasCtx.restore()
         }
         console.log(imageDataMix.data);
         thirdCanvasCtx.putImageData(imageDataMix, 0, 0);
-
       }
       rej("error mixFinalOperation")
     })
