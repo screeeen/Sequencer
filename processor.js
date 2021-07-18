@@ -1,5 +1,4 @@
 let processor = {
-
   timerCallback() {
     if (this.videoPlayer.paused || this.videoPlayer.ended) {
       return;
@@ -20,25 +19,25 @@ let processor = {
   },
 
   doLoad() {
-
     //canvas
+    this.videoFrame = document.getElementById("video-panel");
     this.videoPlayer = document.getElementById("videoPlayer");
     this.video = document.getElementById("currentVideo");
     this.c1 = document.getElementById("c1");
+    console.log(this.c1.width, this.videoFrame.width);
     this.ctx1 = this.c1.getContext("2d");
     this.c2 = document.getElementById("c2");
     this.ctx2 = this.c2.getContext("2d");
     //create mix
-    this.mix = document.createElement('canvas');
+    this.mix = document.createElement("canvas");
     this.mix.id = "mix";
+    // this.mix.hidden = true;
     this.mix.width = this.c1.width;
     this.mix.height = this.c1.height;
     this.ctxMix = this.mix.getContext("2d");
-    var hr = document.createElement('hr')
-    document.getElementById('canvasGroup').appendChild(hr);
-    document.getElementById('canvasGroup').appendChild(this.mix);
+    document.getElementById("canvasGroup").appendChild(this.mix);
     //image componentes
-    this.threshold = 22;
+    this.threshold = 30;
     this.finalImage = [];
     this.red = 255;
     this.green = 255;
@@ -48,20 +47,21 @@ let processor = {
     this.frameMix = undefined;
 
     let self = this;
-    this.videoPlayer.addEventListener("play", function () {
-      console.log("play");
-      self.width = self.video.videoWidth / 2;
-      self.height = self.video.videoHeight / 2;
-      self.timerCallback();
-    }, false);
-
-
+    this.videoPlayer.addEventListener(
+      "play",
+      function () {
+        console.log("play");
+        self.width = self.video.videoWidth;
+        self.height = self.video.videoHeight;
+        self.timerCallback();
+      },
+      false
+    );
   },
 
-  async computeFrame () {
-
+  async computeFrame() {
     if (this.videoPlayer.currentTime < 0.01) {
-      console.log(this.videoPlayer.currentTime, 'get first')
+      console.log(this.videoPlayer.currentTime, "get first");
       await this.setFirstFrame();
       await this.getStaticFrame();
       return;
@@ -81,48 +81,86 @@ let processor = {
     } else {
       loop = true;
     }
-    return loop
+    return loop;
   },
 
   setFirstFrame() {
-    console.log(this.videoPlayer.width, this.videoPlayer.height,this.video.width, this.video.height, this.c1.width, this.c1.height);
-    console.log(this.videoPlayer,this.c1, this.ctx1);
-    
-    return new Promise((res, rej) => {
-      res(this.ctx1.drawImage(this.videoPlayer, 0, 0, this.c1.width, this.c1.height), console.log("setFirstFrame"),console.log(this.ctx1))
-      rej("error setFirstFrame")
-    })
+    console.log(
+      this.videoPlayer.width,
+      this.videoPlayer.height,
+      this.video.width,
+      this.video.height,
+      this.c1.width,
+      this.c1.height
+    );
 
+    return new Promise((res, rej) => {
+      res(
+        this.ctx1.drawImage(
+          this.videoPlayer,
+          0,
+          0,
+          this.c1.width,
+          this.c1.height
+        ),
+        console.log("setFirstFrame")
+      );
+      rej("error setFirstFrame");
+    });
   },
 
   getStaticFrame() {
     this.ctx1.crossOrigin = "Anonymous";
     this.ctx2.crossOrigin = "Anonymous";
     return new Promise((res, rej) => {
-      res(this.frameStatic = this.ctx1.getImageData(0, 0, this.c1.width, this.c1.height), console.log("getStaticFrame"),console.log(this.frameStatic));
-      rej("error getStaticFrame")
-    })
+      res(
+        (this.frameStatic = this.ctx1.getImageData(
+          0,
+          0,
+          this.c1.width,
+          this.c1.height
+        )),
+        console.log("getStaticFrame")
+      );
+      rej("error getStaticFrame");
+    });
   },
 
   getMixFrame() {
     return new Promise((res, rej) => {
-      res(this.frameMix = this.ctx2.getImageData(0, 0, this.mix.width, this.mix.height), console.log("getMixedFrame"));
-      rej("error getMixedFrame")
-    })
+      res(
+        (this.frameMix = this.ctx2.getImageData(
+          0,
+          0,
+          this.mix.width,
+          this.mix.height
+        )),
+        console.log("getMixedFrame")
+      );
+      rej("error getMixedFrame");
+    });
   },
 
   displaySingleFrame() {
     return new Promise((res, rej) => {
-
       var context2 = this.ctx2;
       var mixContext = this.mix;
       var canvas2 = this.c2;
-      res(sortItOutNow(context2, mixContext, canvas2), console.log("displaySingleFrame"))
+      res(
+        sortItOutNow(context2, mixContext, canvas2),
+        console.log("displaySingleFrame")
+      );
       function sortItOutNow() {
-        context2.drawImage(this.videoPlayer, 0, 0, mixContext.width, mixContext.height);
+        context2.drawImage(
+          this.videoPlayer,
+          0,
+          0,
+          mixContext.width,
+          mixContext.height
+        );
       }
-      rej("error displaySingleFrame")
-    })
+      rej("error displaySingleFrame");
+    });
   },
 
   compare() {
@@ -135,9 +173,19 @@ let processor = {
       var blueOp = this.blue;
       var greenOp = this.green;
       var alphaOp = this.alpha;
-      console.log(frameMixOp, frameStaticOp);
 
-      res(compareOperation(frameMixOp, frameStaticOp, thresholdOp, redOp, blueOp, greenOp, alphaOp), console.log("compare"));
+      res(
+        compareOperation(
+          frameMixOp,
+          frameStaticOp,
+          thresholdOp,
+          redOp,
+          blueOp,
+          greenOp,
+          alphaOp
+        ),
+        console.log("compare")
+      );
       function compareOperation() {
         let l = frameMixOp.data.length / 4;
 
@@ -150,9 +198,13 @@ let processor = {
           let g2 = frameStaticOp.data[i * 4 + 1];
           let b2 = frameStaticOp.data[i * 4 + 2];
 
-          if (r < (r2 + thresholdOp) && r > (r2 - thresholdOp)
-            && g < (g2 + thresholdOp) && g > (g2 - thresholdOp)
-            && b < (b2 + thresholdOp) && b > (b2 - thresholdOp)
+          if (
+            r < r2 + thresholdOp &&
+            r > r2 - thresholdOp &&
+            g < g2 + thresholdOp &&
+            g > g2 - thresholdOp &&
+            b < b2 + thresholdOp &&
+            b > b2 - thresholdOp
           ) {
             frameMixOp.data[i * 4 + 0] = redOp;
             frameMixOp.data[i * 4 + 1] = greenOp;
@@ -161,30 +213,35 @@ let processor = {
           }
         }
       }
-      rej("error compare")
-    })
+      rej("error compare");
+    });
   },
 
   paintMix() {
     return new Promise((res, rej) => {
-      res(this.ctxMix.putImageData(this.frameMix, 0, 0), console.log("paint mix"),console.log(this.ctxMix));
-      rej("error compare")
-    })
+      res(
+        this.ctxMix.putImageData(this.frameMix, 0, 0),
+        console.log("paint mix")
+      );
+      rej("error compare");
+    });
   },
 
   pushImageToArray() {
     return new Promise((res, rej) => {
-
       var mixOp = this.mix;
       var finalImageOp = this.finalImage;
-      res(pushToFinalOperation(mixOp, finalImageOp), console.log("pushToFinal"));
+      res(
+        pushToFinalOperation(mixOp, finalImageOp),
+        console.log("pushToFinal")
+      );
       function pushToFinalOperation() {
         let pic = new Image();
         pic = mixOp.toDataURL();
         finalImageOp.push(pic);
       }
-      rej("error pushToFinal")
-    })
+      rej("error pushToFinal");
+    });
   },
 
   async finalOps() {
@@ -201,12 +258,11 @@ let processor = {
         for (let i = 1; i < finalImageOp.length; i += 2) {
           img = new Image();
           img.src = finalImageOp[i].toString();
-          document.getElementById('canvasGroup').appendChild(img);
+          document.getElementById("canvasGroup").appendChild(img);
         }
       }
-      rej("error logFinalOperation")
-    })
-    
+      rej("error logFinalOperation");
+    });
   },
 
   mixFinalDif() {
@@ -214,32 +270,38 @@ let processor = {
       console.log("lenght of images array", this.finalImage.length);
       var finalImageOp = this.finalImage;
       var secondCanvas = this.c2;
-      var secondCanvasCtx = secondCanvas.getContext('2d');
+      var secondCanvasCtx = secondCanvas.getContext("2d");
       var thirdCanvas = this.mix;
-      var thirdCanvasCtx = thirdCanvas.getContext('2d');
-      var imageDataMix = thirdCanvasCtx.getImageData(0, 0, thirdCanvas.width, thirdCanvas.height);
+      var thirdCanvasCtx = thirdCanvas.getContext("2d");
+      var imageDataMix = thirdCanvasCtx.getImageData(
+        0,
+        0,
+        thirdCanvas.width,
+        thirdCanvas.height
+      );
 
       res(mixfinalOperationD(), console.log("mixFinalDiff"));
 
       function mixfinalOperationD() {
-
-        var cv = document.createElement('canvas');
-        cv.id = 'manolo';
-        var cvx = cv.getContext('2d');
-
+        var cv = document.createElement("canvas");
+        cv.id = "manolo";
+        var cvx = cv.getContext("2d");
 
         for (let x = 0; x < finalImageOp.length; x += 1) {
-
           var img = new Image();
           img.src = finalImageOp[x];
           secondCanvasCtx.drawImage(img, 0, 0);
-          var imageDataSecond = secondCanvasCtx.getImageData(0, 0, secondCanvas.width, secondCanvas.height);
+          var imageDataSecond = secondCanvasCtx.getImageData(
+            0,
+            0,
+            secondCanvas.width,
+            secondCanvas.height
+          );
           var pixelsSecond = imageDataSecond.data;
           var imgxx = new Image();
           imgxx.src = finalImageOp[x];
           cvx.drawImage(imgxx, 0, 0);
-          document.getElementById('canvasGroup').appendChild(cv);
-
+          document.getElementById("canvasGroup").appendChild(cv);
 
           for (let i = 1; i < pixelsSecond.length; i += 1) {
             let r = pixelsSecond[i];
@@ -254,8 +316,8 @@ let processor = {
         console.log(imageDataMix.data);
         thirdCanvasCtx.putImageData(imageDataMix, 0, 0);
       }
-      rej("error mixFinalOperation")
-    })
+      rej("error mixFinalOperation");
+    });
   },
 
   mixfinal() {
@@ -266,21 +328,31 @@ let processor = {
       var firstCanvas = this.c1;
       var secondCanvas = this.c2;
       var thirdCanvas = this.mix;
-      var thresholdOp = 20;//this.threshold;
+      var thresholdOp = this.threshold; //this.threshold;
 
       res(mixfinalOperation(), console.log("mixFinal"));
 
       function mixfinalOperation() {
-        var firstCanvasCtx = firstCanvas.getContext('2d');
+        var firstCanvasCtx = firstCanvas.getContext("2d");
         // var firstCanvasCtxData = firstCanvasCtx.getImageData(0, 0, firstCanvas.width, firstCanvas.height)
-        var secondCanvasCtx = secondCanvas.getContext('2d');
+        var secondCanvasCtx = secondCanvas.getContext("2d");
         // var secondCanvasCtxData = secondCanvasCtx.getImageData(0, 0, secondCanvas.width, secondCanvas.height)
-        var thirdCanvasCtx = thirdCanvas.getContext('2d');
+        var thirdCanvasCtx = thirdCanvas.getContext("2d");
         // var thirdCanvasCtxData = thirdCanvasCtx.getImageData(0, 0, thirdCanvas.width, thirdCanvas.height)
 
         //grab fixed image mix canvas
-        var imageDataFirst = firstCanvasCtx.getImageData(0, 0, firstCanvas.width, firstCanvas.height);
-        var imageDataMix = thirdCanvasCtx.getImageData(0, 0, thirdCanvas.width, thirdCanvas.height);
+        var imageDataFirst = firstCanvasCtx.getImageData(
+          0,
+          0,
+          firstCanvas.width,
+          firstCanvas.height
+        );
+        var imageDataMix = thirdCanvasCtx.getImageData(
+          0,
+          0,
+          thirdCanvas.width,
+          thirdCanvas.height
+        );
 
         var count = 0;
         for (let x = 0; x < finalImageOp.length; x += 4) {
@@ -290,11 +362,15 @@ let processor = {
           var img = new Image();
           img.src = finalImageOp[x];
           secondCanvasCtx.drawImage(img, 0, 0);
-          var imageDataSecond = secondCanvasCtx.getImageData(0, 0, secondCanvas.width, secondCanvas.height);
+          var imageDataSecond = secondCanvasCtx.getImageData(
+            0,
+            0,
+            secondCanvas.width,
+            secondCanvas.height
+          );
           var pixelsSecond = imageDataSecond.data;
 
           for (let i = count; i < pixelsSecond.length; i += 1) {
-
             let rMix = imageDataFirst.data[i * 4 + 0];
             let gMix = imageDataFirst.data[i * 4 + 1];
             let bMix = imageDataFirst.data[i * 4 + 2];
@@ -303,9 +379,13 @@ let processor = {
             let g2 = pixelsSecond[i * 4 + 1];
             let b2 = pixelsSecond[i * 4 + 2];
 
-            if (r2 < (rMix + thresholdOp) && r2 > (rMix - thresholdOp)
-              && g2 < (gMix + thresholdOp) && g2 > (gMix - thresholdOp)
-              && b2 < (bMix + thresholdOp) && b2 > (bMix - thresholdOp)
+            if (
+              r2 < rMix + thresholdOp &&
+              r2 > rMix - thresholdOp &&
+              g2 < gMix + thresholdOp &&
+              g2 > gMix - thresholdOp &&
+              b2 < bMix + thresholdOp &&
+              b2 > bMix - thresholdOp
             ) {
               // console.log("dif",rMix,r2);
 
@@ -319,10 +399,9 @@ let processor = {
           }
           thirdCanvasCtx.putImageData(imageDataMix, 0, 0);
         }
-
       }
-      rej("error mixFinalOperation")
-    })
+      rej("error mixFinalOperation");
+    });
   },
 
   //TOOLS components
@@ -340,8 +419,21 @@ let processor = {
 
   changeAlpha(value) {
     this.alpha = value;
-  }
-}
+  },
+
+  savePicture() {
+    const dataURL = this.mix.toDataURL("image/png");
+    // document.location.href = dataURL;
+    var iframe =
+      '<iframe src="' +
+      dataURL +
+      '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>';
+    var x = window.open();
+    x.document.open();
+    x.document.write(iframe);
+    x.document.close();
+  },
+};
 
 // *************** LISTENTERS ******************
 
@@ -349,7 +441,7 @@ document.addEventListener("DOMContentLoaded", () => {
   processor.doLoad();
 });
 
-document.getElementById('videoPlayer').addEventListener("canplay", () => {
+document.getElementById("videoPlayer").addEventListener("canplay", () => {
   processor.doLoad();
 });
 
@@ -361,7 +453,6 @@ document.getElementById("green-slider").addEventListener("change", () => {
   processor.changeGreen(document.getElementById("green-slider").value);
 });
 
-
 document.getElementById("blue-slider").addEventListener("change", () => {
   processor.changeBlue(document.getElementById("blue-slider").value);
 });
@@ -370,67 +461,12 @@ document.getElementById("alpha-slider").addEventListener("change", () => {
   processor.changeAlpha(document.getElementById("alpha-slider").value);
 });
 
-document.getElementById('videoPlayer').addEventListener("ended", () => {
-  console.log('video ended ----------- ');
+document.getElementById("videoPlayer").addEventListener("ended", () => {
+  console.log("video ended ----------- ");
   processor.finalOps();
 });
 
-// document.getElementById("loop-checkbox").addEventListener("change", () => {
-//   console.log(document.getElementById("video").getAttribute("loop"));
-//   document.getElementById("video").setAttribute("loop", processor.changeLoop(document.getElementById("video").getAttribute("loop")))
-// });
-
-// document.getElementById("play-button").addEventListener("click", () => {
-//   processor.computeFrame();
-// });
-
-
-
-
-
-
-
-
-
-
-
-
-  // passFrame: async function () {
-  //   return new Promise((res, rej) => {
-
-  //     function passFrameOperation() {
-  //       if (this.video.currentTime < this.video.duration) {
-  //         this.pushToFinal();
-  //         this.passOneFrame();
-  //         this.frameCount += .3;
-  //         this.computeFrame();
-  //       } else {
-  //         console.log("video ended");
-  //         this.logfinal();
-  //       }
-  //     }
-  //     res(passFrameOperation, console.log("passFrame"));
-  //     rej("error passFrame")
-  //   })
-  // },
-
-
-      // if (this.video && this.video.readyState === 4) {
-    //   let loop = document.getElementById("video").getAttribute(loop).value;
-    // }
-
-    // let self = this;
-    // this.video.addEventListener("play", function () {
-    //   self.width = self.video.videoWidth / 2;
-    //   self.height = self.video.videoHeight / 2;
-    //   self.computeFrame();
-    // }, false);
-
-    // this.video.addEventListener("seeked", function () {
-    //   console.log("seeked at frame: ", self.frameCount);
-    //   self.video.pause();
-    // }, false);
-
-
-
-
+document.querySelector("button").addEventListener("click", () => {
+  console.log("save picture");
+  processor.savePicture();
+});
