@@ -7,7 +7,7 @@ let processor = {
     let self = this;
     setTimeout(function () {
       self.timerCallback();
-    }, 0);
+    }, this.frameInterval);
   },
 
   changeVideo() {
@@ -18,13 +18,20 @@ let processor = {
     player.load();
   },
 
+  changePictureInterval(value) {
+    this.frameInterval = value;
+    console.log(this.frameInterval);
+    // document.getElementById("interval")
+  },
+
+  //--- ENTRY POINT
   doLoad() {
     //canvas
+    this.frameInterval = 400; // tiempo entre frames
     this.videoFrame = document.getElementById("video-panel");
     this.videoPlayer = document.getElementById("videoPlayer");
     this.video = document.getElementById("currentVideo");
     this.c1 = document.getElementById("c1");
-    console.log(this.c1.width, this.videoFrame.width);
     this.ctx1 = this.c1.getContext("2d");
     this.c2 = document.getElementById("c2");
     this.ctx2 = this.c2.getContext("2d");
@@ -404,34 +411,15 @@ let processor = {
     });
   },
 
-  //TOOLS components
-  changeRed(value) {
-    this.red = value;
-  },
-
-  changeGreen(value) {
-    this.green = value;
-  },
-
-  changeBlue(value) {
-    this.blue = value;
-  },
-
-  changeAlpha(value) {
-    this.alpha = value;
-  },
-
   savePicture() {
     const dataURL = this.mix.toDataURL("image/png");
-    // document.location.href = dataURL;
-    var iframe =
-      '<iframe src="' +
-      dataURL +
-      '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>';
-    var x = window.open();
-    x.document.open();
-    x.document.write(iframe);
-    x.document.close();
+    var element = document.createElement("a");
+    element.setAttribute("href", dataURL);
+    element.setAttribute("download", "picture_thing.png");
+    element.style.display = "none";
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
   },
 };
 
@@ -445,22 +433,6 @@ document.getElementById("videoPlayer").addEventListener("canplay", () => {
   processor.doLoad();
 });
 
-document.getElementById("red-slider").addEventListener("change", () => {
-  processor.changeRed(document.getElementById("red-slider").value);
-});
-
-document.getElementById("green-slider").addEventListener("change", () => {
-  processor.changeGreen(document.getElementById("green-slider").value);
-});
-
-document.getElementById("blue-slider").addEventListener("change", () => {
-  processor.changeBlue(document.getElementById("blue-slider").value);
-});
-
-document.getElementById("alpha-slider").addEventListener("change", () => {
-  processor.changeAlpha(document.getElementById("alpha-slider").value);
-});
-
 document.getElementById("videoPlayer").addEventListener("ended", () => {
   console.log("video ended ----------- ");
   processor.finalOps();
@@ -469,4 +441,10 @@ document.getElementById("videoPlayer").addEventListener("ended", () => {
 document.querySelector("button").addEventListener("click", () => {
   console.log("save picture");
   processor.savePicture();
+});
+
+document.getElementById("pic-interval").addEventListener("change", () => {
+  processor.changePictureInterval(
+    document.getElementById("pic-interval").value
+  );
 });
