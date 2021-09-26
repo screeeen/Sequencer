@@ -1,6 +1,6 @@
 input[type="range"] {
   margin: auto;
-  /* -webkit-appearance: none; */
+  -webkit-appearance: none;
   position: relative;
   overflow: hidden;
   height: 100px;

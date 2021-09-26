@@ -1,5 +1,4 @@
 let processor = {
-  //LOOP AND computeFrame
   timerCallback() {
     if (this.videoPlayer.paused || this.videoPlayer.ended) {
       return;
@@ -25,8 +24,9 @@ let processor = {
     // document.getElementById("interval")
   },
 
-  //TRY TO RESET
   reset() {
+    //TRY TO RESET
+
     var canvases = document.querySelectorAll("canvas");
     // console.log("canvases", canvases);
 
@@ -83,7 +83,7 @@ let processor = {
       function () {
         self.width = self.video.videoWidth;
         self.height = self.video.videoHeight;
-        // self.reset();
+        self.reset();
         self.timerCallback();
       },
       false
@@ -104,6 +104,16 @@ let processor = {
     await this.compare();
     await this.paintMix();
     await this.pushImageToArray();
+  },
+
+  changeLoop(loop) {
+    //console.log("loop?", loop);
+    if (loop) {
+      loop = false;
+    } else {
+      loop = true;
+    }
+    return loop;
   },
 
   setFirstFrame() {
@@ -258,14 +268,13 @@ let processor = {
       rej("error pushToFinal");
     });
   },
-  //FINAL OPS
+
   async finalOps() {
-    // await this.logfinal();
+    await this.logfinal();
     await this.mixfinal();
     await this.mixFinalDif();
   },
 
-  // VISUAL LOG
   logfinal() {
     return new Promise((res, rej) => {
       var finalImageOp = this.finalImage;
@@ -285,12 +294,10 @@ let processor = {
     return new Promise((res, rej) => {
       //console.log("lenght of images array", this.finalImage.length);
       var finalImageOp = this.finalImage;
-
       var secondCanvas = this.c2;
       var secondCanvasCtx = secondCanvas.getContext("2d");
       var thirdCanvas = this.mix;
       var thirdCanvasCtx = thirdCanvas.getContext("2d");
-
       var imageDataMix = thirdCanvasCtx.getImageData(
         0,
         0,
@@ -302,14 +309,13 @@ let processor = {
 
       function mixfinalOperationD() {
         var cv = document.createElement("canvas");
-        cv.id = "final_mix";
+        cv.id = "manolo";
         var cvx = cv.getContext("2d");
 
         for (let x = 0; x < finalImageOp.length; x += 1) {
           var img = new Image();
           img.src = finalImageOp[x];
           secondCanvasCtx.drawImage(img, 0, 0);
-
           var imageDataSecond = secondCanvasCtx.getImageData(
             0,
             0,
@@ -317,10 +323,10 @@ let processor = {
             secondCanvas.height
           );
           var pixelsSecond = imageDataSecond.data;
-          // var imgxx = new Image();
-          // imgxx.src = finalImageOp[x];
-          // cvx.drawImage(imgxx, 0, 0);
-          // document.getElementById("canvasGroup").appendChild(cv);
+          var imgxx = new Image();
+          imgxx.src = finalImageOp[x];
+          cvx.drawImage(imgxx, 0, 0);
+          document.getElementById("canvasGroup").appendChild(cv);
 
           for (let i = 1; i < pixelsSecond.length; i += 1) {
             let r = pixelsSecond[i];
@@ -456,8 +462,4 @@ document.getElementById("pic-interval").addEventListener("change", () => {
   processor.changePictureInterval(
     document.getElementById("pic-interval").value
   );
-  processor.videoPlayer.play();
-  console.log(document.getElementById("pic-interval").value);
-  processor.timerCallback();
-  console.log(processor);
 });

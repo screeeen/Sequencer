@@ -1,6 +1,6 @@
 input[type="range"] {
   margin: auto;
-  /* -webkit-appearance: none; */
+  -webkit-appearance: none;
   position: relative;
   overflow: hidden;
   height: 100px;
@@ -10,11 +10,11 @@ input[type="range"] {
 }
 
 ::-webkit-slider-runnable-track {
-  /* background: #ddd; */
+  background: #ddd;
 }
 
 ::-moz-range-track {
-  /* background: #f00; */
+  background: #f00;
   height: 100%;
 }
 

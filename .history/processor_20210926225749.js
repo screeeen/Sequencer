@@ -258,9 +258,9 @@ let processor = {
       rej("error pushToFinal");
     });
   },
-  //FINAL OPS
+
   async finalOps() {
-    // await this.logfinal();
+    await this.logfinal();
     await this.mixfinal();
     await this.mixFinalDif();
   },
@@ -309,7 +309,6 @@ let processor = {
           var img = new Image();
           img.src = finalImageOp[x];
           secondCanvasCtx.drawImage(img, 0, 0);
-
           var imageDataSecond = secondCanvasCtx.getImageData(
             0,
             0,
@@ -317,10 +316,10 @@ let processor = {
             secondCanvas.height
           );
           var pixelsSecond = imageDataSecond.data;
-          // var imgxx = new Image();
-          // imgxx.src = finalImageOp[x];
-          // cvx.drawImage(imgxx, 0, 0);
-          // document.getElementById("canvasGroup").appendChild(cv);
+          var imgxx = new Image();
+          imgxx.src = finalImageOp[x];
+          cvx.drawImage(imgxx, 0, 0);
+          document.getElementById("canvasGroup").appendChild(cv);
 
           for (let i = 1; i < pixelsSecond.length; i += 1) {
             let r = pixelsSecond[i];
@@ -456,8 +455,4 @@ document.getElementById("pic-interval").addEventListener("change", () => {
   processor.changePictureInterval(
     document.getElementById("pic-interval").value
   );
-  processor.videoPlayer.play();
-  console.log(document.getElementById("pic-interval").value);
-  processor.timerCallback();
-  console.log(processor);
 });

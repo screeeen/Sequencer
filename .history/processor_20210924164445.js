@@ -1,5 +1,4 @@
 let processor = {
-  //LOOP AND computeFrame
   timerCallback() {
     if (this.videoPlayer.paused || this.videoPlayer.ended) {
       return;
@@ -25,24 +24,15 @@ let processor = {
     // document.getElementById("interval")
   },
 
-  //TRY TO RESET
   reset() {
-    var canvases = document.querySelectorAll("canvas");
-    // console.log("canvases", canvases);
-
-    canvases.forEach((canvas) => {
-      canvas.remove();
-      // document.removeChild(canvas);
-      console.log(canvas);
-      // var ctx = canvas.getContext("2d");
-      // ctx.clearRect(0, 0, canvas.width, canvas.height);
-    });
-    console.log("despues", document.querySelectorAll("canvas"));
-
-    var images = document.querySelectorAll("img");
-    console.log("images", images);
-    images.forEach((img) => this.canvasGroup.removeChild(img));
-    console.log("images despues", images);
+    // var canvas2 = this.c2;
+    // var mixContext = this.mix;
+    this.ctx1.clearRect(0, 0, this.c1.width, this.c1.height);
+    this.ctx2.clearRect(0, 0, this.c2.width, this.c2.height);
+    if (this.ctMix) {
+      console.log("``````CT MSI");
+      this.ctMix.clearRect(0, 0, this.ctMix.width, this.ctMix.height);
+    }
   },
 
   //--- ENTRY POINT
@@ -63,8 +53,7 @@ let processor = {
     this.mix.width = this.c1.width;
     this.mix.height = this.c1.height;
     this.ctxMix = this.mix.getContext("2d");
-    this.canvasGroup = document.getElementById("canvasGroup");
-    canvasGroup.appendChild(this.mix);
+    document.getElementById("canvasGroup").appendChild(this.mix);
     //image componentes
     this.threshold = 30;
     this.finalImage = [];
@@ -77,13 +66,13 @@ let processor = {
 
     let self = this;
 
-    //PRESSED PLAY
+    //PLAY LISTENER START PROCESS
     this.videoPlayer.addEventListener(
       "play",
       function () {
         self.width = self.video.videoWidth;
         self.height = self.video.videoHeight;
-        // self.reset();
+        self.reset();
         self.timerCallback();
       },
       false
@@ -104,6 +93,16 @@ let processor = {
     await this.compare();
     await this.paintMix();
     await this.pushImageToArray();
+  },
+
+  changeLoop(loop) {
+    //console.log("loop?", loop);
+    if (loop) {
+      loop = false;
+    } else {
+      loop = true;
+    }
+    return loop;
   },
 
   setFirstFrame() {
@@ -226,7 +225,7 @@ let processor = {
       ),
         //console.log("compare");
 
-        res();
+        res(console.log("hola compare"));
 
       rej("error compare");
     });
@@ -258,14 +257,13 @@ let processor = {
       rej("error pushToFinal");
     });
   },
-  //FINAL OPS
+
   async finalOps() {
-    // await this.logfinal();
+    await this.logfinal();
     await this.mixfinal();
     await this.mixFinalDif();
   },
 
-  // VISUAL LOG
   logfinal() {
     return new Promise((res, rej) => {
       var finalImageOp = this.finalImage;
@@ -285,12 +283,10 @@ let processor = {
     return new Promise((res, rej) => {
       //console.log("lenght of images array", this.finalImage.length);
       var finalImageOp = this.finalImage;
-
       var secondCanvas = this.c2;
       var secondCanvasCtx = secondCanvas.getContext("2d");
       var thirdCanvas = this.mix;
       var thirdCanvasCtx = thirdCanvas.getContext("2d");
-
       var imageDataMix = thirdCanvasCtx.getImageData(
         0,
         0,
@@ -302,14 +298,13 @@ let processor = {
 
       function mixfinalOperationD() {
         var cv = document.createElement("canvas");
-        cv.id = "final_mix";
+        cv.id = "manolo";
         var cvx = cv.getContext("2d");
 
         for (let x = 0; x < finalImageOp.length; x += 1) {
           var img = new Image();
           img.src = finalImageOp[x];
           secondCanvasCtx.drawImage(img, 0, 0);
-
           var imageDataSecond = secondCanvasCtx.getImageData(
             0,
             0,
@@ -317,10 +312,10 @@ let processor = {
             secondCanvas.height
           );
           var pixelsSecond = imageDataSecond.data;
-          // var imgxx = new Image();
-          // imgxx.src = finalImageOp[x];
-          // cvx.drawImage(imgxx, 0, 0);
-          // document.getElementById("canvasGroup").appendChild(cv);
+          var imgxx = new Image();
+          imgxx.src = finalImageOp[x];
+          cvx.drawImage(imgxx, 0, 0);
+          document.getElementById("canvasGroup").appendChild(cv);
 
           for (let i = 1; i < pixelsSecond.length; i += 1) {
             let r = pixelsSecond[i];
@@ -456,8 +451,4 @@ document.getElementById("pic-interval").addEventListener("change", () => {
   processor.changePictureInterval(
     document.getElementById("pic-interval").value
   );
-  processor.videoPlayer.play();
-  console.log(document.getElementById("pic-interval").value);
-  processor.timerCallback();
-  console.log(processor);
 });

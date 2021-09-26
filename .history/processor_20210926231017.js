@@ -457,7 +457,6 @@ document.getElementById("pic-interval").addEventListener("change", () => {
     document.getElementById("pic-interval").value
   );
   processor.videoPlayer.play();
-  console.log(document.getElementById("pic-interval").value);
   processor.timerCallback();
   console.log(processor);
 });
