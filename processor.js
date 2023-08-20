@@ -25,26 +25,6 @@ let processor = {
     // document.getElementById("interval")
   },
 
-  //TRY TO RESET
-  reset() {
-    var canvases = document.querySelectorAll("canvas");
-    // console.log("canvases", canvases);
-
-    canvases.forEach((canvas) => {
-      canvas.remove();
-      // document.removeChild(canvas);
-      console.log(canvas);
-      // var ctx = canvas.getContext("2d");
-      // ctx.clearRect(0, 0, canvas.width, canvas.height);
-    });
-    console.log("despues", document.querySelectorAll("canvas"));
-
-    var images = document.querySelectorAll("img");
-    console.log("images", images);
-    images.forEach((img) => this.canvasGroup.removeChild(img));
-    console.log("images despues", images);
-  },
-
   //--- ENTRY POINT
   doLoad() {
     //canvas
@@ -260,25 +240,9 @@ let processor = {
   },
   //FINAL OPS
   async finalOps() {
-    // await this.logfinal();
+    
     await this.mixfinal();
-    await this.mixFinalDif();
-  },
-
-  // VISUAL LOG
-  logfinal() {
-    return new Promise((res, rej) => {
-      var finalImageOp = this.finalImage;
-      res(logFinalOperation(), console.log("logFinalOperation"));
-      function logFinalOperation() {
-        for (let i = 1; i < finalImageOp.length; i += 2) {
-          img = new Image();
-          img.src = finalImageOp[i].toString();
-          document.getElementById("canvasGroup").appendChild(img);
-        }
-      }
-      rej("error logFinalOperation");
-    });
+    // await this.mixFinalDif();
   },
 
   mixFinalDif() {
@@ -301,9 +265,6 @@ let processor = {
       res(mixfinalOperationD(), console.log("mixFinalDiff"));
 
       function mixfinalOperationD() {
-        var cv = document.createElement("canvas");
-        cv.id = "final_mix";
-        var cvx = cv.getContext("2d");
 
         for (let x = 0; x < finalImageOp.length; x += 1) {
           var img = new Image();
@@ -317,10 +278,6 @@ let processor = {
             secondCanvas.height
           );
           var pixelsSecond = imageDataSecond.data;
-          // var imgxx = new Image();
-          // imgxx.src = finalImageOp[x];
-          // cvx.drawImage(imgxx, 0, 0);
-          // document.getElementById("canvasGroup").appendChild(cv);
 
           for (let i = 1; i < pixelsSecond.length; i += 1) {
             let r = pixelsSecond[i];

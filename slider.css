@@ -1,14 +1,3 @@
-input[type="range"] {
-  margin: auto;
-  /* -webkit-appearance: none; */
-  position: relative;
-  overflow: hidden;
-  height: 100px;
-  width: 50%;
-  cursor: pointer;
-  border-radius: 50px;
-}
-
 ::-webkit-slider-runnable-track {
   /* background: #ddd; */
 }
@@ -36,4 +25,14 @@ input[type="range"] {
   /* background: rgba(6, 138, 187, 1);
   box-shadow: -100vw 200px 10px 100vw rgba(6, 138, 187, 0.5);
   border: none; */
+}
+
+h1 {
+  font-size: 24pt;
+  padding: 2%;
+}
+
+p {
+  font-size: 18pt;
+  padding: 2%;
 }
