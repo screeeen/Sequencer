@@ -1,85 +1,126 @@
 body {
   color: rgb(88, 88, 88);
-  /* background: rgba(209, 240, 255); */
-  width: 100%;
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
 #app {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
   padding: 5%;
-  display: flex;
-  flex-direction: column;
-  align-content: center;
-  justify-items: center;
-  width: 100%;
-  margin: auto 0;
-  align-content: left;
-  /* box-sizing: border-box; */
+  box-sizing: border-box;
 }
 
-#video-panel {
-  display: flex;
-  flex-direction: column;
-  align-content: center;
-  justify-items: center;
-  padding: 2%;
+h1 {
+  font-size: 24pt;
 }
 
-#videoPlayer {
+h2 {
+  font-size: 12pt;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #999;
+  margin-bottom: 0.5rem;
+}
+
+p {
+  font-size: 14pt;
+}
+
+.file-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 14pt;
+}
+
+#videoPlayer,
+#output {
   width: 100%;
+  display: block;
+  background: #111;
 }
 
 #controls {
   display: flex;
   flex-direction: column;
-  align-content: flex-start;
-  padding: 2%;
+  gap: 0.75rem;
 }
 
-#play-button {
-  /* border: 4px dotted white; */
+.control {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.control label {
+  width: 9rem;
+  flex-shrink: 0;
+}
+
+.control input[type="range"] {
+  flex: 1;
+}
+
+.control .value {
+  width: 4rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.buttons {
+  margin-top: 0.5rem;
+}
+
+button {
+  border: 1px solid #888;
   border-radius: 5px;
-  margin: 10px;
-  padding: 10px;
-  width: 30px;
-}
-
-#canvasGroup {
-  /* border: 8px solid #444444; */
-  /* box-sizing: border-box;
-    padding: 10px;
-    width: 100%;
-    margin: 10px;
-    background: rgb(219, 217, 217); */
-}
-
-input[type="range"] {
-  /* min-width: 400px; */
-  /* width: 500px; */
-  /* height: 100px;
+  padding: 8px 14px;
+  background: #fff;
   cursor: pointer;
-  font-size: .7em;
-  margin: 20px 3px 0 3px;
-  position: relative;
-  top: 100%;
-  text-align: justify; */
+  font-size: 11pt;
 }
 
+button:hover {
+  background: #f0f0f0;
+}
+
+/* --- Range slider styling --- */
 input[type="range"] {
-  /* -webkit-appearance: none; */
+  -webkit-appearance: none;
+  appearance: none;
   background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: #ddd;
+  border-radius: 2px;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: #ddd;
+  border-radius: 2px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  background: #fff;
-  height: 18px;
   width: 18px;
-  margin-top: -8px;
-  border-radius: 99px;
+  height: 18px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: #444;
 }
 
-input[type="range"]::-webkit-slider-runnable-track {
-  width: 300px;
-  height: 4px;
-  background: #ddd;
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: #444;
 }

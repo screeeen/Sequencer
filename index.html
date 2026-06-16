@@ -1,55 +1,71 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <link rel="stylesheet" type="text/css" href="style.css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" type="text/css" href="reset.css" />
-    <link rel="stylesheet" type="text/css" href="slider.css" />
-    <title>thang</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <title>Video Sequencer</title>
   </head>
 
   <body>
-    <div id="app">
+    <main id="app">
       <header>
         <h1>VIDEO SEQUENCER</h1>
         <p>A digital tool for those who like sequences</p>
       </header>
-      <input
-        id="newlocalFILE"
-        style="width: 80%; height: 10%; font-size: 24pt"
-        name="video"
-        size="1"
-        maxlength="100000"
-        accept="video/mp4,video/x-m4v,video/*"
-        type="file"
-        onchange="processor.changeVideo()"
-      />
 
-      <p>VIDEO</p>
-      <div id="video-panel">
-        <video muted controls id="videoPlayer">
-          <p>video</p>
-          <source
-            id="currentVideo"
-            crossOrigin="Anonymous"
-            src="video_adxnap.mov"
-            controls="true"
-            loop="false"
-          />
+      <label class="file-field">
+        <span>Load a fixed-camera video</span>
+        <input
+          id="fileInput"
+          name="video"
+          type="file"
+          accept="video/mp4,video/x-m4v,video/*"
+        />
+      </label>
+
+      <section id="video-panel">
+        <h2>Source</h2>
+        <video muted controls id="videoPlayer" crossorigin="anonymous">
+          <source src="video_adxnap.mov" />
         </video>
-        <div id="controls">
-          <p>CONTROLS</p>
-          <h6>Interval</h6>
-          <p id="interval"></p>
-          <input id="pic-interval" type="range" min="10" max="200" step="6" />
-        </div>
-      </div>
-      <div id="canvasGroup">
-        <canvas id="c1" width="960" height="540" hidden></canvas>
-        <canvas id="c2" width="960" height="540" hidden></canvas>
-        <button>save picture</button>
-      </div>
-    </div>
+      </section>
 
-    <script type="text/javascript" src="processor.js"></script>
+      <section id="controls">
+        <h2>Controls</h2>
+
+        <div class="control">
+          <label for="interval">Interval</label>
+          <input id="interval" type="range" min="40" max="500" step="10" value="100" />
+          <span id="interval-value" class="value"></span>
+        </div>
+
+        <div class="control">
+          <label for="threshold">Threshold</label>
+          <input id="threshold" type="range" min="5" max="120" step="1" value="30" />
+          <span id="threshold-value" class="value"></span>
+        </div>
+
+        <div class="control">
+          <label for="highlight">Highlight subject</label>
+          <input id="highlight" type="checkbox" />
+          <input id="color" type="color" value="#ff0000" />
+        </div>
+
+        <div class="control buttons">
+          <button id="reset" type="button">reset</button>
+          <button id="save" type="button">save picture</button>
+          <span id="progress" class="value"></span>
+        </div>
+      </section>
+
+      <section id="result">
+        <h2>Result</h2>
+        <canvas id="output" width="960" height="540"></canvas>
+      </section>
+    </main>
+
+    <script type="module" src="src/main.js"></script>
   </body>
 </html>
