@@ -22,13 +22,13 @@ h1 {
 .strobe-title {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: space-between;
-  width: 90vw;
-  margin: 0 auto;
-  font-size: 22pt;
-  font-weight: 400;
+  justify-content: center;
+  align-items: center;
+  gap: 0.02em;
+  font-size: 30pt;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   line-height: 1;
 }
 
@@ -37,24 +37,24 @@ h1 {
   transform-origin: 50% 60%;
 }
 
-.strobe-title span:nth-child(1)  { transform: rotate(-13deg); }
-.strobe-title span:nth-child(2)  { transform: rotate(22deg); }
-.strobe-title span:nth-child(3)  { transform: rotate(-7deg); }
-.strobe-title span:nth-child(4)  { transform: rotate(31deg); }
-.strobe-title span:nth-child(5)  { transform: rotate(-25deg); }
-.strobe-title span:nth-child(6)  { transform: rotate(9deg); }
-.strobe-title span:nth-child(7)  { transform: rotate(-18deg); }
-.strobe-title span:nth-child(8)  { transform: rotate(27deg); }
-.strobe-title span:nth-child(9)  { transform: rotate(-4deg); }
-.strobe-title span:nth-child(10) { transform: rotate(16deg); }
-.strobe-title span:nth-child(11) { transform: rotate(-29deg); }
-.strobe-title span:nth-child(12) { transform: rotate(11deg); }
-.strobe-title span:nth-child(13) { transform: rotate(-20deg); }
-.strobe-title span:nth-child(14) { transform: rotate(6deg); }
-.strobe-title span:nth-child(15) { transform: rotate(-33deg); }
-.strobe-title span:nth-child(16) { transform: rotate(19deg); }
-.strobe-title span:nth-child(17) { transform: rotate(-9deg); }
-.strobe-title span:nth-child(18) { transform: rotate(24deg); }
+.strobe-title span:nth-child(1)  { transform: translateY(2px) rotate(-6deg); }
+.strobe-title span:nth-child(2)  { transform: translateY(-3px) rotate(8deg); }
+.strobe-title span:nth-child(3)  { transform: translateY(1px) rotate(-4deg); }
+.strobe-title span:nth-child(4)  { transform: translateY(-2px) rotate(10deg); }
+.strobe-title span:nth-child(5)  { transform: translateY(3px) rotate(-9deg); }
+.strobe-title span:nth-child(6)  { transform: translateY(-4px) rotate(5deg); }
+.strobe-title span:nth-child(7)  { transform: translateY(1px) rotate(-7deg); }
+.strobe-title span:nth-child(8)  { transform: translateY(-2px) rotate(12deg); }
+.strobe-title span:nth-child(9)  { transform: translateY(2px) rotate(-3deg); }
+.strobe-title span:nth-child(10) { transform: translateY(-3px) rotate(7deg); }
+.strobe-title span:nth-child(11) { transform: translateY(2px) rotate(-10deg); }
+.strobe-title span:nth-child(12) { transform: translateY(-1px) rotate(4deg); }
+.strobe-title span:nth-child(13) { transform: translateY(2px) rotate(-14deg); }
+.strobe-title span:nth-child(14) { transform: translateY(-3px) rotate(16deg); }
+.strobe-title span:nth-child(15) { transform: translateY(1px) rotate(-6deg); }
+.strobe-title span:nth-child(16) { transform: translateY(-2px) rotate(9deg); }
+.strobe-title span:nth-child(17) { transform: translateY(3px) rotate(-5deg); }
+.strobe-title span:nth-child(18) { transform: translateY(-1px) rotate(11deg); }
 
 h2 {
   font-size: 12pt;
