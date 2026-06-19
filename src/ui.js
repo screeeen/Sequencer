@@ -44,19 +44,22 @@ export function setupUI(els, videoSource, strobe, pipeline) {
     const file = els.fileInput.files[0];
     if (file) {
       videoSource.loadFile(file);
-      pipeline.frames = [];
+      pipeline.clear();
       els.progress.textContent = "";
     }
   });
 
-  // --- Intervalo (nº de capturas): se aplica al reproducir con Play) ---
+  // --- Intervalo: submuestrea la caché y recompone (sin recapturar) ---
   const syncInterval = () => {
     const ms = Number(els.intervalInput.value);
     videoSource.setInterval(ms);
     pipeline.setInterval(ms);
     els.intervalLabel.textContent = `${ms} ms`;
   };
-  els.intervalInput.addEventListener("input", syncInterval);
+  els.intervalInput.addEventListener("input", () => {
+    syncInterval();
+    scheduleRecompose();
+  });
   syncInterval();
 
   // --- Umbral de detección (recompone en vivo) ---
