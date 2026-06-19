@@ -48,22 +48,40 @@
       <section id="controls">
         <h2>Controls</h2>
 
-        <div class="control">
-          <label for="interval">Interval</label>
-          <input id="interval" type="range" min="40" max="500" step="10" value="100" />
-          <span id="interval-value" class="value"></span>
+        <div class="control-group">
+          <div class="control">
+            <label for="interval">Interval</label>
+            <input id="interval" type="range" min="40" max="500" step="10" value="100" />
+            <span id="interval-value" class="value"></span>
+          </div>
+          <p class="hint">
+            Spacing between the subject's copies. Higher = fewer, more spread-out
+            copies. Updates the result instantly (no need to replay).
+          </p>
         </div>
 
-        <div class="control">
-          <label for="threshold">Threshold</label>
-          <input id="threshold" type="range" min="0" max="120" step="1" value="30" />
-          <span id="threshold-value" class="value"></span>
+        <div class="control-group">
+          <div class="control">
+            <label for="threshold">Threshold</label>
+            <input id="threshold" type="range" min="0" max="120" step="1" value="30" />
+            <span id="threshold-value" class="value"></span>
+          </div>
+          <p class="hint">
+            Detection sensitivity. Lower = catches more of the subject (and more
+            noise); higher = stricter and cleaner. 0 = maximum sensitivity.
+          </p>
         </div>
 
-        <div class="control">
-          <label for="highlight">Highlight subject</label>
-          <input id="highlight" type="checkbox" />
-          <input id="color" type="color" value="#ff0000" />
+        <div class="control-group">
+          <div class="control">
+            <label for="highlight">Highlight subject</label>
+            <input id="highlight" type="checkbox" />
+            <input id="color" type="color" value="#ff0000" />
+          </div>
+          <p class="hint">
+            Paints the detected subject in a solid color instead of its real
+            pixels (pick the color on the right).
+          </p>
         </div>
 
         <div class="control buttons">

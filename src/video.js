@@ -19,6 +19,7 @@ export function createVideoSource(video) {
     video.load();
   };
 
+  // Guarda la separación objetivo entre capturas (la usa el pipeline).
   source.setInterval = (ms) => {
     source.intervalMs = ms;
   };
