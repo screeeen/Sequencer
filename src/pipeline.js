@@ -14,137 +14,127 @@ function yieldToUI() {
   return new Promise((r) => requestAnimationFrame(() => r()));
 }
 
-export class Pipeline {
-  /**
-   * @param {HTMLVideoElement} video
-   * @param {import("./strobe.js").Strobe} strobe
-   */
-  constructor(video, strobe) {
-    this.video = video;
-    this.strobe = strobe;
-    this.capture = document.createElement("canvas");
-    this.captureCtx = this.capture.getContext("2d", {
-      willReadFrequently: true,
-    });
-    this.frames = []; // ImageData[] capturados durante la reproducción
-    this.intervalMs = 100;
-    this.busy = false;
-    this.onProgress = () => {}; // (phase, fraction)
+/**
+ * @param {HTMLVideoElement} video
+ * @param {ReturnType<import("./strobe.js").createStrobe>} strobe
+ */
+export function createPipeline(video, strobe) {
+  // Estado privado.
+  const capture = document.createElement("canvas");
+  const captureCtx = capture.getContext("2d", { willReadFrequently: true });
+  const supportsRVFC = "requestVideoFrameCallback" in HTMLVideoElement.prototype;
+  let intervalMs = 100;
+  let effInterval = intervalMs;
+  let lastMs = -Infinity;
 
-    this._supportsRVFC =
-      "requestVideoFrameCallback" in HTMLVideoElement.prototype;
-    this._effInterval = this.intervalMs;
-    this._lastMs = -Infinity;
+  // Estado público (la UI lo lee/escribe).
+  const p = {
+    frames: [], // ImageData[] capturados durante la reproducción
+    busy: false,
+    onProgress: () => {}, // (phase, fraction)
+  };
 
-    this.video.addEventListener("play", () => this._onPlay());
-    this.video.addEventListener("ended", () => this._onEnded());
-  }
-
-  get hasFrames() {
-    return this.frames.length > 0;
-  }
-
-  setInterval(ms) {
-    this.intervalMs = ms;
-  }
+  p.setInterval = (ms) => {
+    intervalMs = ms;
+  };
 
   /** Captura el frame actual del vídeo a la resolución de trabajo del estrobo. */
-  _grab() {
-    const w = this.strobe.width;
-    const h = this.strobe.height;
-    if (this.capture.width !== w) this.capture.width = w;
-    if (this.capture.height !== h) this.capture.height = h;
-    this.captureCtx.drawImage(this.video, 0, 0, w, h);
-    return this.captureCtx.getImageData(0, 0, w, h);
-  }
+  const grab = () => {
+    const w = strobe.width;
+    const h = strobe.height;
+    if (capture.width !== w) capture.width = w;
+    if (capture.height !== h) capture.height = h;
+    captureCtx.drawImage(video, 0, 0, w, h);
+    return captureCtx.getImageData(0, 0, w, h);
+  };
 
   // --- Captura durante la reproducción ---
 
-  _onPlay() {
-    if (this.busy) return;
-    const video = this.video;
-    // Asegura resolución de trabajo y reinicia la captura.
-    if (video.videoWidth) this.strobe.resize(video.videoWidth, video.videoHeight);
-    this.frames = [];
-    this._lastMs = -Infinity;
-
-    const durMs = (video.duration || 0) * 1000;
-    // Espaciado efectivo: respeta el pedido pero garantiza <= MAX_FRAMES.
-    this._effInterval = durMs
-      ? Math.max(this.intervalMs, durMs / MAX_FRAMES)
-      : this.intervalMs;
-
-    if (this._supportsRVFC) this._rvfcLoop();
-    else this._timeoutLoop();
-  }
-
-  _rvfcLoop() {
-    this.video.requestVideoFrameCallback(() => {
-      this._maybeCapture();
-      if (!this.video.paused && !this.video.ended) this._rvfcLoop();
-    });
-  }
-
-  _timeoutLoop() {
-    if (this.video.paused || this.video.ended) return;
-    this._maybeCapture();
-    setTimeout(() => this._timeoutLoop(), 30);
-  }
-
-  _maybeCapture() {
-    if (this.frames.length >= MAX_FRAMES) return;
-    const video = this.video;
+  const maybeCapture = () => {
+    if (p.frames.length >= MAX_FRAMES) return;
     if (!video.videoWidth) return;
     const tMs = video.currentTime * 1000;
-    if (this.frames.length === 0 || tMs - this._lastMs >= this._effInterval) {
-      this.frames.push(this._grab());
-      this._lastMs = tMs;
+    if (p.frames.length === 0 || tMs - lastMs >= effInterval) {
+      p.frames.push(grab());
+      lastMs = tMs;
       const frac = video.duration ? video.currentTime / video.duration : 0;
-      this.onProgress("capturing", Math.min(1, frac));
+      p.onProgress("capturing", Math.min(1, frac));
     }
-  }
+  };
 
-  async _onEnded() {
-    if (this.busy || this.frames.length < 2) return;
-    this.busy = true;
+  const rvfcLoop = () => {
+    video.requestVideoFrameCallback(() => {
+      maybeCapture();
+      if (!video.paused && !video.ended) rvfcLoop();
+    });
+  };
+
+  const timeoutLoop = () => {
+    if (video.paused || video.ended) return;
+    maybeCapture();
+    setTimeout(timeoutLoop, 30);
+  };
+
+  const onPlay = () => {
+    if (p.busy) return;
+    if (video.videoWidth) strobe.resize(video.videoWidth, video.videoHeight);
+    p.frames = [];
+    lastMs = -Infinity;
+
+    const durMs = (video.duration || 0) * 1000;
+    // Espaciado efectivo: respeta lo pedido pero garantiza <= MAX_FRAMES.
+    effInterval = durMs ? Math.max(intervalMs, durMs / MAX_FRAMES) : intervalMs;
+
+    if (supportsRVFC) rvfcLoop();
+    else timeoutLoop();
+  };
+
+  const composeAll = async () => {
+    strobe.resetAccumulator();
+    const total = p.frames.length;
+    for (let i = 0; i < total; i++) {
+      const frame = p.frames[i];
+      const alpha = strobe.maskFrame(frame);
+      strobe.composite(frame, alpha);
+      strobe.flush();
+      p.onProgress("compositing", (i + 1) / total);
+      await yieldToUI();
+    }
+    p.onProgress("done", 1);
+  };
+
+  const onEnded = async () => {
+    if (p.busy || p.frames.length < 2) return;
+    p.busy = true;
     try {
-      // --- Modelo de fondo (mediana de un subconjunto) ---
-      this.onProgress("modeling", 0);
+      // Modelo de fondo (mediana de un subconjunto).
+      p.onProgress("modeling", 0);
       await yieldToUI();
-      const step = Math.max(1, Math.floor(this.frames.length / MAX_BG_SAMPLES));
-      const bgFrames = this.frames.filter((_, i) => i % step === 0);
-      this.strobe.setBackground(bgFrames);
+      const step = Math.max(1, Math.floor(p.frames.length / MAX_BG_SAMPLES));
+      const bgFrames = p.frames.filter((_, i) => i % step === 0);
+      strobe.setBackground(bgFrames);
       await yieldToUI();
-
-      // --- Componer ---
-      await this._composeAll();
+      await composeAll();
     } finally {
-      this.busy = false;
+      p.busy = false;
     }
-  }
+  };
 
   /** Recompone el estrobo desde los frames cacheados (parámetros nuevos). */
-  async recompose() {
-    if (this.busy || !this.strobe.ready || !this.hasFrames) return;
-    this.busy = true;
+  p.recompose = async () => {
+    if (p.busy || !strobe.ready || p.frames.length === 0) return;
+    p.busy = true;
     try {
-      await this._composeAll();
+      await composeAll();
     } finally {
-      this.busy = false;
+      p.busy = false;
     }
-  }
+  };
 
-  async _composeAll() {
-    this.strobe.resetAccumulator();
-    const total = this.frames.length;
-    for (let i = 0; i < total; i++) {
-      const frame = this.frames[i];
-      const alpha = this.strobe.maskFrame(frame);
-      this.strobe.composite(frame, alpha);
-      this.strobe.flush();
-      this.onProgress("compositing", (i + 1) / total);
-      await yieldToUI();
-    }
-    this.onProgress("done", 1);
-  }
+  Object.defineProperty(p, "hasFrames", { get: () => p.frames.length > 0 });
+
+  video.addEventListener("play", onPlay);
+  video.addEventListener("ended", onEnded);
+
+  return p;
 }

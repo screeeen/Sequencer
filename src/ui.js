@@ -16,9 +16,9 @@ const PHASE_LABEL = {
 
 /**
  * @param {object} els
- * @param {import("./video.js").VideoSource} videoSource
- * @param {import("./strobe.js").Strobe} strobe
- * @param {import("./pipeline.js").Pipeline} pipeline
+ * @param {ReturnType<import("./video.js").createVideoSource>} videoSource
+ * @param {ReturnType<import("./strobe.js").createStrobe>} strobe
+ * @param {ReturnType<import("./pipeline.js").createPipeline>} pipeline
  */
 export function setupUI(els, videoSource, strobe, pipeline) {
   // --- Progreso ---

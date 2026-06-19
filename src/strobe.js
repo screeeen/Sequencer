@@ -18,75 +18,75 @@ import {
 
 const MAX_DIM = 1280; // cota de resolución de trabajo (perf/memoria)
 
-export class Strobe {
-  constructor(outputCanvas) {
-    this.canvas = outputCanvas;
-    this.ctx = outputCanvas.getContext("2d", { willReadFrequently: true });
+/**
+ * Crea un motor de estrobo sobre un canvas de salida.
+ * @param {HTMLCanvasElement} outputCanvas
+ */
+export function createStrobe(outputCanvas) {
+  // Estado privado (en el closure).
+  const ctx = outputCanvas.getContext("2d", { willReadFrequently: true });
 
-    this.width = outputCanvas.width;
-    this.height = outputCanvas.height;
-
-    this.background = null; // Uint8ClampedArray RGBA (mediana)
-    this.bgY = null;
-    this.bgCb = null;
-    this.bgCr = null;
-    this.noise = null; // MAD de luma por píxel
-    this.accumulator = null; // ImageData en construcción
-
-    // Parámetros de la UI.
-    this.threshold = 30;
-    this.highlight = false;
-    this.color = { r: 255, g: 0, b: 0 };
-  }
+  // Estado público y parámetros (la UI los lee/escribe directamente).
+  const s = {
+    canvas: outputCanvas,
+    width: outputCanvas.width,
+    height: outputCanvas.height,
+    background: null, // Uint8ClampedArray RGBA (mediana)
+    bgY: null,
+    bgCb: null,
+    bgCr: null,
+    bgMeanY: 0,
+    noise: null, // MAD de luma por píxel
+    accumulator: null, // ImageData en construcción
+    threshold: 30,
+    highlight: false,
+    color: { r: 255, g: 0, b: 0 },
+  };
 
   /** Ajusta dimensiones de trabajo a partir de la resolución del vídeo. */
-  resize(videoWidth, videoHeight) {
+  s.resize = (videoWidth, videoHeight) => {
     const scale = Math.min(1, MAX_DIM / Math.max(videoWidth, videoHeight));
-    this.width = Math.round(videoWidth * scale) || 1;
-    this.height = Math.round(videoHeight * scale) || 1;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.background = null;
-  }
-
-  get ready() {
-    return this.background !== null;
-  }
+    s.width = Math.round(videoWidth * scale) || 1;
+    s.height = Math.round(videoHeight * scale) || 1;
+    s.canvas.width = s.width;
+    s.canvas.height = s.height;
+    s.background = null;
+  };
 
   /** Construye el modelo de fondo (mediana + ruido) a partir de N frames. */
-  setBackground(frames) {
-    const { bg, noise } = buildBackgroundModel(frames, this.width, this.height);
-    this.background = bg;
-    this.noise = noise;
-    const { y, cb, cr } = rgbaToYCbCr(bg, this.width, this.height);
-    this.bgY = y;
-    this.bgCb = cb;
-    this.bgCr = cr;
+  s.setBackground = (frames) => {
+    const { bg, noise } = buildBackgroundModel(frames, s.width, s.height);
+    s.background = bg;
+    s.noise = noise;
+    const { y, cb, cr } = rgbaToYCbCr(bg, s.width, s.height);
+    s.bgY = y;
+    s.bgCb = cb;
+    s.bgCr = cr;
     let sum = 0;
     for (let i = 0; i < y.length; i++) sum += y[i];
-    this.bgMeanY = sum / y.length;
-    this.resetAccumulator();
-  }
+    s.bgMeanY = sum / y.length;
+    s.resetAccumulator();
+  };
 
   /** Reinicia el acumulador a una copia del fondo y lo pinta. */
-  resetAccumulator() {
-    if (!this.ready) return;
-    this.accumulator = new ImageData(
-      new Uint8ClampedArray(this.background),
-      this.width,
-      this.height
+  s.resetAccumulator = () => {
+    if (!s.ready) return;
+    s.accumulator = new ImageData(
+      new Uint8ClampedArray(s.background),
+      s.width,
+      s.height
     );
-    this.flush();
-  }
+    s.flush();
+  };
 
   /**
    * Calcula la máscara alpha (0..255) del sujeto para un frame dado.
    * @param {ImageData} frame
    * @returns {Uint8ClampedArray} alpha por píxel
    */
-  maskFrame(frame) {
-    const w = this.width;
-    const h = this.height;
+  s.maskFrame = (frame) => {
+    const w = s.width;
+    const h = s.height;
     const n = w * h;
     const { y, cb, cr } = rgbaToYCbCr(frame.data, w, h);
     const raw = new Uint8Array(n);
@@ -97,16 +97,16 @@ export class Strobe {
     let sum = 0;
     for (let i = 0; i < n; i++) sum += y[i];
     const meanY = sum / n;
-    const gain = Math.min(1.4, Math.max(0.7, this.bgMeanY / Math.max(meanY, 1)));
+    const gain = Math.min(1.4, Math.max(0.7, s.bgMeanY / Math.max(meanY, 1)));
 
-    const Tc = this.threshold; // umbral de croma
+    const Tc = s.threshold; // umbral de croma
     for (let i = 0; i < n; i++) {
-      const dCb = cb[i] - this.bgCb[i];
-      const dCr = cr[i] - this.bgCr[i];
+      const dCb = cb[i] - s.bgCb[i];
+      const dCr = cr[i] - s.bgCr[i];
       const dC = Math.sqrt(dCb * dCb + dCr * dCr);
       const yn = y[i] * gain;
-      const dY = yn - this.bgY[i];
-      const Ty = Math.max(Tc * 1.2, 4 * this.noise[i] + 6);
+      const dY = yn - s.bgY[i];
+      const Ty = Math.max(Tc * 1.2, 4 * s.noise[i] + 6);
 
       let fg = false;
       if (dC > Tc) {
@@ -115,7 +115,7 @@ export class Strobe {
         // Cambio de brillo con croma similar: sujeto gris sobre fondo gris,
         // salvo que sea una sombra (algo más oscuro, mismo color). Banda
         // estrecha para no comerse sujetos genuinamente oscuros.
-        const ratio = yn / Math.max(this.bgY[i], 1);
+        const ratio = yn / Math.max(s.bgY[i], 1);
         const isShadow = dY < 0 && ratio > 0.5 && ratio < 0.95;
         fg = !isShadow;
       }
@@ -127,16 +127,14 @@ export class Strobe {
     keepMainBlobs(cleaned, w, h, minArea, 0.15);
     const radius = Math.max(1, Math.round(Math.min(w, h) / 400));
     return feather(cleaned, w, h, radius);
-  }
+  };
 
   /** Compone un frame sobre el acumulador usando el alpha dado. */
-  composite(frame, alpha) {
-    const acc = this.accumulator.data;
+  s.composite = (frame, alpha) => {
+    const acc = s.accumulator.data;
     const src = frame.data;
-    const hr = this.color.r;
-    const hg = this.color.g;
-    const hb = this.color.b;
-    const useHighlight = this.highlight;
+    const { r: hr, g: hg, b: hb } = s.color;
+    const useHighlight = s.highlight;
     for (let i = 0; i < alpha.length; i++) {
       const a = alpha[i] / 255;
       if (a === 0) continue;
@@ -149,14 +147,15 @@ export class Strobe {
       acc[p + 2] = acc[p + 2] * (1 - a) + tb * a;
       acc[p + 3] = 255;
     }
-  }
+  };
 
   /** Vuelca el acumulador al canvas visible. */
-  flush() {
-    this.ctx.putImageData(this.accumulator, 0, 0);
-  }
+  s.flush = () => ctx.putImageData(s.accumulator, 0, 0);
 
-  toDataURL() {
-    return this.canvas.toDataURL("image/png");
-  }
+  s.toDataURL = () => s.canvas.toDataURL("image/png");
+
+  // Propiedad calculada.
+  Object.defineProperty(s, "ready", { get: () => s.background !== null });
+
+  return s;
 }

@@ -1,25 +1,27 @@
-// Carga del vídeo. El muestreo de frames lo hace el pipeline por seeking,
-// así que aquí solo gestionamos la fuente y el archivo seleccionado.
+// Carga del vídeo. El muestreo de frames lo hace el pipeline durante la
+// reproducción, así que aquí solo gestionamos la fuente y el archivo.
 
-export class VideoSource {
-  /**
-   * @param {HTMLVideoElement} video
-   */
-  constructor(video) {
-    this.video = video;
-    this.intervalMs = 100; // separación objetivo entre capturas
-  }
+/**
+ * @param {HTMLVideoElement} video
+ */
+export function createVideoSource(video) {
+  const source = {
+    video,
+    intervalMs: 100, // separación objetivo entre capturas
+  };
 
   /** Carga un archivo local seleccionado por el usuario. */
-  loadFile(file) {
-    if (this.video.src && this.video.src.startsWith("blob:")) {
-      URL.revokeObjectURL(this.video.src);
+  source.loadFile = (file) => {
+    if (video.src && video.src.startsWith("blob:")) {
+      URL.revokeObjectURL(video.src);
     }
-    this.video.src = URL.createObjectURL(file);
-    this.video.load();
-  }
+    video.src = URL.createObjectURL(file);
+    video.load();
+  };
 
-  setInterval(ms) {
-    this.intervalMs = ms;
-  }
+  source.setInterval = (ms) => {
+    source.intervalMs = ms;
+  };
+
+  return source;
 }
