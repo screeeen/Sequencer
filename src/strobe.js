@@ -12,7 +12,7 @@ import {
   rgbaToYCbCr,
   buildBackgroundModel,
   openClose,
-  dropSmallBlobs,
+  keepMainBlobs,
   feather,
 } from "./imageops.js";
 
@@ -62,6 +62,9 @@ export class Strobe {
     this.bgY = y;
     this.bgCb = cb;
     this.bgCr = cr;
+    let sum = 0;
+    for (let i = 0; i < y.length; i++) sum += y[i];
+    this.bgMeanY = sum / y.length;
     this.resetAccumulator();
   }
 
@@ -88,12 +91,21 @@ export class Strobe {
     const { y, cb, cr } = rgbaToYCbCr(frame.data, w, h);
     const raw = new Uint8Array(n);
 
+    // Normalización de iluminación: escala la luma del frame para igualar el
+    // brillo medio del fondo. Neutraliza la auto-exposición/parpadeo, que si no
+    // dispara grandes zonas como sujeto (el efecto "overlay"). Acotada.
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += y[i];
+    const meanY = sum / n;
+    const gain = Math.min(1.4, Math.max(0.7, this.bgMeanY / Math.max(meanY, 1)));
+
     const Tc = this.threshold; // umbral de croma
     for (let i = 0; i < n; i++) {
       const dCb = cb[i] - this.bgCb[i];
       const dCr = cr[i] - this.bgCr[i];
       const dC = Math.sqrt(dCb * dCb + dCr * dCr);
-      const dY = y[i] - this.bgY[i];
+      const yn = y[i] * gain;
+      const dY = yn - this.bgY[i];
       const Ty = Math.max(Tc * 1.2, 4 * this.noise[i] + 6);
 
       let fg = false;
@@ -101,9 +113,10 @@ export class Strobe {
         fg = true; // cambio de color claro
       } else if (Math.abs(dY) > Ty) {
         // Cambio de brillo con croma similar: sujeto gris sobre fondo gris,
-        // salvo que sea una sombra (más oscuro, mismo color, ratio moderado).
-        const ratio = y[i] / Math.max(this.bgY[i], 1);
-        const isShadow = dY < 0 && ratio > 0.35 && ratio < 0.92;
+        // salvo que sea una sombra (algo más oscuro, mismo color). Banda
+        // estrecha para no comerse sujetos genuinamente oscuros.
+        const ratio = yn / Math.max(this.bgY[i], 1);
+        const isShadow = dY < 0 && ratio > 0.5 && ratio < 0.95;
         fg = !isShadow;
       }
       raw[i] = fg ? 255 : 0;
@@ -111,7 +124,7 @@ export class Strobe {
 
     const cleaned = openClose(raw, w, h, 1);
     const minArea = Math.max(40, Math.round(n * 0.0006));
-    dropSmallBlobs(cleaned, w, h, minArea);
+    keepMainBlobs(cleaned, w, h, minArea, 0.15);
     const radius = Math.max(1, Math.round(Math.min(w, h) / 400));
     return feather(cleaned, w, h, radius);
   }

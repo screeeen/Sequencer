@@ -144,16 +144,19 @@ export function openClose(mask, width, height, iterations = 1) {
 }
 
 /**
- * Elimina blobs conectados menores que minArea (4-conectividad), dejando solo
- * las regiones grandes del sujeto. Modifica la máscara in situ.
+ * Limpieza de blobs (4-conectividad): conserva solo las regiones relevantes
+ * del sujeto y borra el resto. Un blob se conserva si su área supera minArea Y
+ * además es >= fracOfLargest del blob mayor (elimina ruido disperso de tamaño
+ * medio que de otro modo crearía un "overlay"). Modifica la máscara in situ.
  */
-export function dropSmallBlobs(mask, width, height, minArea) {
+export function keepMainBlobs(mask, width, height, minArea, fracOfLargest = 0.15) {
   const n = width * height;
   const labels = new Int32Array(n).fill(-1);
   const queue = new Int32Array(n);
+  const areaByLabel = new Map();
+
   for (let start = 0; start < n; start++) {
     if (mask[start] === 0 || labels[start] !== -1) continue;
-    // BFS sobre el blob.
     let head = 0;
     let tail = 0;
     queue[tail++] = start;
@@ -166,36 +169,30 @@ export function dropSmallBlobs(mask, width, height, minArea) {
       const y = (i / width) | 0;
       if (x > 0) {
         const j = i - 1;
-        if (mask[j] !== 0 && labels[j] === -1) {
-          labels[j] = start;
-          queue[tail++] = j;
-        }
+        if (mask[j] !== 0 && labels[j] === -1) (labels[j] = start), (queue[tail++] = j);
       }
       if (x < width - 1) {
         const j = i + 1;
-        if (mask[j] !== 0 && labels[j] === -1) {
-          labels[j] = start;
-          queue[tail++] = j;
-        }
+        if (mask[j] !== 0 && labels[j] === -1) (labels[j] = start), (queue[tail++] = j);
       }
       if (y > 0) {
         const j = i - width;
-        if (mask[j] !== 0 && labels[j] === -1) {
-          labels[j] = start;
-          queue[tail++] = j;
-        }
+        if (mask[j] !== 0 && labels[j] === -1) (labels[j] = start), (queue[tail++] = j);
       }
       if (y < height - 1) {
         const j = i + width;
-        if (mask[j] !== 0 && labels[j] === -1) {
-          labels[j] = start;
-          queue[tail++] = j;
-        }
+        if (mask[j] !== 0 && labels[j] === -1) (labels[j] = start), (queue[tail++] = j);
       }
     }
-    if (area < minArea) {
-      for (let q = 0; q < tail; q++) mask[queue[q]] = 0;
-    }
+    areaByLabel.set(start, area);
+  }
+
+  let largest = 0;
+  for (const a of areaByLabel.values()) if (a > largest) largest = a;
+  const threshold = Math.max(minArea, largest * fracOfLargest);
+
+  for (let i = 0; i < n; i++) {
+    if (mask[i] !== 0 && areaByLabel.get(labels[i]) < threshold) mask[i] = 0;
   }
   return mask;
 }
