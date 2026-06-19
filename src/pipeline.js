@@ -118,7 +118,8 @@ export function createPipeline(video, strobe) {
     const total = list.length;
     for (let i = 0; i < total; i++) {
       const frame = list[i];
-      const alpha = strobe.maskFrame(frame);
+      // Vecinos para la pista de movimiento (3-frame differencing).
+      const alpha = strobe.maskFrame(frame, list[i - 1], list[i + 1]);
       strobe.composite(frame, alpha);
       strobe.flush();
       p.onProgress("compositing", (i + 1) / total);

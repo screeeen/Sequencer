@@ -21,9 +21,17 @@ export function rgbaToYCbCr(rgba, width, height) {
   return { y, cb, cr };
 }
 
-/** Mediana del valor absoluto de las desviaciones (robusta al ruido). */
+/** Solo la luma (para diferencias inter-frame de movimiento). */
+export function rgbaToLuma(rgba, n) {
+  const y = new Float32Array(n);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    y[i] = 0.299 * rgba[p] + 0.587 * rgba[p + 1] + 0.114 * rgba[p + 2];
+  }
+  return y;
+}
+
+/** Mediana de los primeros `count` valores. */
 function medianOf(values, count) {
-  // Inserción simple; count es pequeño (nº de frames de muestra).
   const arr = values.slice(0, count).sort((a, b) => a - b);
   const m = arr.length >> 1;
   return arr.length % 2 ? arr[m] : (arr[m - 1] + arr[m]) / 2;
@@ -31,8 +39,9 @@ function medianOf(values, count) {
 
 /**
  * Modelo de fondo robusto a partir de varios frames de la misma escena fija.
- * Devuelve el fondo en RGBA (mediana por canal) y un mapa de ruido por píxel
- * (MAD de la luma) para umbralización adaptativa.
+ * Por píxel y por CANAL (en YCbCr) calcula la mediana (fondo) y la desviación
+ * típica robusta (sigma = 1.4826·MAD) para umbralización estadística. Devuelve
+ * también el fondo en RGBA (mediana RGB) para usarlo como base del resultado.
  *
  * @param {ImageData[]} frames
  */
@@ -40,12 +49,19 @@ export function buildBackgroundModel(frames, width, height) {
   const n = width * height;
   const k = frames.length;
   const bg = new Uint8ClampedArray(n * 4);
-  const noise = new Float32Array(n); // MAD de luma por píxel
+  const mY = new Float32Array(n);
+  const mCb = new Float32Array(n);
+  const mCr = new Float32Array(n);
+  const sY = new Float32Array(n);
+  const sCb = new Float32Array(n);
+  const sCr = new Float32Array(n);
 
   const rs = new Float32Array(k);
   const gs = new Float32Array(k);
   const bs = new Float32Array(k);
-  const ls = new Float32Array(k);
+  const Ys = new Float32Array(k);
+  const Cbs = new Float32Array(k);
+  const Crs = new Float32Array(k);
   const dev = new Float32Array(k);
 
   for (let i = 0; i < n; i++) {
@@ -58,20 +74,30 @@ export function buildBackgroundModel(frames, width, height) {
       rs[f] = r;
       gs[f] = g;
       bs[f] = b;
-      ls[f] = 0.299 * r + 0.587 * g + 0.114 * b;
+      Ys[f] = 0.299 * r + 0.587 * g + 0.114 * b;
+      Cbs[f] = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
+      Crs[f] = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
     }
-    const mr = medianOf(rs, k);
-    const mg = medianOf(gs, k);
-    const mb = medianOf(bs, k);
-    const ml = medianOf(ls, k);
-    bg[p] = mr;
-    bg[p + 1] = mg;
-    bg[p + 2] = mb;
+    bg[p] = medianOf(rs, k);
+    bg[p + 1] = medianOf(gs, k);
+    bg[p + 2] = medianOf(bs, k);
     bg[p + 3] = 255;
-    for (let f = 0; f < k; f++) dev[f] = Math.abs(ls[f] - ml);
-    noise[i] = medianOf(dev, k);
+
+    const my = medianOf(Ys, k);
+    const mcb = medianOf(Cbs, k);
+    const mcr = medianOf(Crs, k);
+    mY[i] = my;
+    mCb[i] = mcb;
+    mCr[i] = mcr;
+
+    for (let f = 0; f < k; f++) dev[f] = Math.abs(Ys[f] - my);
+    sY[i] = 1.4826 * medianOf(dev, k);
+    for (let f = 0; f < k; f++) dev[f] = Math.abs(Cbs[f] - mcb);
+    sCb[i] = 1.4826 * medianOf(dev, k);
+    for (let f = 0; f < k; f++) dev[f] = Math.abs(Crs[f] - mcr);
+    sCr[i] = 1.4826 * medianOf(dev, k);
   }
-  return { bg, noise };
+  return { bg, mY, mCb, mCr, sY, sCb, sCr };
 }
 
 /** Erosión binaria 3x3 (mínimo del vecindario). Mantiene 0/255. */
@@ -197,31 +223,25 @@ export function keepMainBlobs(mask, width, height, minArea, fracOfLargest = 0.15
   return mask;
 }
 
-/**
- * Difumina la máscara binaria a alpha suave (0..255) con un box blur
- * separable de radio r — da el "feather" del borde y antialiasing.
- */
-export function feather(mask, width, height, radius = 1) {
+/** Media de caja separable (radio r) sobre Float32, con bordes clampeados. */
+function boxMeanFloat(src, width, height, radius) {
   const n = width * height;
   const tmp = new Float32Array(n);
-  const out = new Uint8ClampedArray(n);
+  const out = new Float32Array(n);
   const win = radius * 2 + 1;
-
-  // Horizontal.
   for (let y = 0; y < height; y++) {
     const row = y * width;
     let sum = 0;
     for (let x = -radius; x <= radius; x++) {
-      sum += mask[row + Math.min(width - 1, Math.max(0, x))];
+      sum += src[row + Math.min(width - 1, Math.max(0, x))];
     }
     for (let x = 0; x < width; x++) {
       tmp[row + x] = sum / win;
       const add = Math.min(width - 1, x + radius + 1);
       const sub = Math.max(0, x - radius);
-      sum += mask[row + add] - mask[row + sub];
+      sum += src[row + add] - src[row + sub];
     }
   }
-  // Vertical.
   for (let x = 0; x < width; x++) {
     let sum = 0;
     for (let y = -radius; y <= radius; y++) {
@@ -233,6 +253,43 @@ export function feather(mask, width, height, radius = 1) {
       const sub = Math.max(0, y - radius);
       sum += tmp[add * width + x] - tmp[sub * width + x];
     }
+  }
+  return out;
+}
+
+/**
+ * Filtro guiado (He et al.): refina la máscara `p` (0..1) usando la imagen
+ * `guide` (luma normalizada 0..1) como guía, de modo que el alpha resultante
+ * se "engancha" a los bordes reales de la imagen -> siluetas nítidas sin halos.
+ * Devuelve alpha 0..255.
+ */
+export function guidedFilter(guide, p, width, height, radius, eps) {
+  const n = width * height;
+  const Ip = new Float32Array(n);
+  const II = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    Ip[i] = guide[i] * p[i];
+    II[i] = guide[i] * guide[i];
+  }
+  const mI = boxMeanFloat(guide, width, height, radius);
+  const mp = boxMeanFloat(p, width, height, radius);
+  const mIp = boxMeanFloat(Ip, width, height, radius);
+  const mII = boxMeanFloat(II, width, height, radius);
+
+  const a = new Float32Array(n);
+  const b = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const varI = mII[i] - mI[i] * mI[i];
+    const covIp = mIp[i] - mI[i] * mp[i];
+    a[i] = covIp / (varI + eps);
+    b[i] = mp[i] - a[i] * mI[i];
+  }
+  const ma = boxMeanFloat(a, width, height, radius);
+  const mb = boxMeanFloat(b, width, height, radius);
+
+  const out = new Uint8ClampedArray(n);
+  for (let i = 0; i < n; i++) {
+    out[i] = (ma[i] * guide[i] + mb[i]) * 255;
   }
   return out;
 }
