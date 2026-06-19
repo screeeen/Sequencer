@@ -1,4 +1,5 @@
-// Cableado de los controles del DOM con el motor (Strobe) y la fuente de vídeo.
+// Cableado de los controles del DOM con el motor (Strobe), el cargador de
+// vídeo y el pipeline de generación.
 
 /** Convierte "#rrggbb" a {r,g,b}. */
 function hexToRgb(hex) {
@@ -6,19 +7,49 @@ function hexToRgb(hex) {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
+const PHASE_LABEL = {
+  collecting: "capturing",
+  modeling: "background…",
+  compositing: "compositing",
+  done: "done",
+};
+
 /**
- * @param {object} els  referencias a elementos del DOM
+ * @param {object} els
  * @param {import("./video.js").VideoSource} videoSource
  * @param {import("./strobe.js").Strobe} strobe
+ * @param {import("./pipeline.js").Pipeline} pipeline
  */
-export function setupUI(els, videoSource, strobe) {
+export function setupUI(els, videoSource, strobe, pipeline) {
+  // --- Progreso ---
+  pipeline.onProgress = (phase, fraction) => {
+    const label = PHASE_LABEL[phase] || phase;
+    const pct = Math.round(fraction * 100);
+    els.progress.textContent =
+      phase === "modeling" || phase === "done" ? label : `${label} ${pct}%`;
+  };
+
+  // --- Recomposición diferida al cambiar parámetros ---
+  let recomposeTimer = null;
+  const scheduleRecompose = () => {
+    if (!pipeline.hasFrames) return;
+    clearTimeout(recomposeTimer);
+    recomposeTimer = setTimeout(() => {
+      if (!pipeline.busy) pipeline.recompose();
+    }, 150);
+  };
+
   // --- Cargar vídeo propio ---
   els.fileInput.addEventListener("change", () => {
     const file = els.fileInput.files[0];
-    if (file) videoSource.loadFile(file);
+    if (file) {
+      videoSource.loadFile(file);
+      pipeline.frames = [];
+      els.progress.textContent = "";
+    }
   });
 
-  // --- Intervalo entre capturas ---
+  // --- Intervalo (nº de capturas): se aplica al regenerar con Play) ---
   const syncInterval = () => {
     const ms = Number(els.intervalInput.value);
     videoSource.setInterval(ms);
@@ -27,34 +58,46 @@ export function setupUI(els, videoSource, strobe) {
   els.intervalInput.addEventListener("input", syncInterval);
   syncInterval();
 
-  // --- Umbral de detección ---
+  // --- Umbral de detección (recompone en vivo) ---
   const syncThreshold = () => {
     const t = Number(els.thresholdInput.value);
     strobe.threshold = t;
     els.thresholdLabel.textContent = String(t);
   };
-  els.thresholdInput.addEventListener("input", syncThreshold);
+  els.thresholdInput.addEventListener("input", () => {
+    syncThreshold();
+    scheduleRecompose();
+  });
   syncThreshold();
 
   // --- Resaltado de color ---
   els.highlightToggle.addEventListener("change", () => {
     strobe.highlight = els.highlightToggle.checked;
+    scheduleRecompose();
   });
   els.colorInput.addEventListener("input", () => {
     strobe.color = hexToRgb(els.colorInput.value);
+    scheduleRecompose();
   });
   strobe.color = hexToRgb(els.colorInput.value);
 
-  // --- Reproducir (inline, sin fullscreen en iOS gracias a playsinline) ---
-  els.playButton.addEventListener("click", () => {
-    videoSource.video.play();
+  // --- Play: genera el estrobo (pre-pasada offline) ---
+  els.playButton.addEventListener("click", async () => {
+    if (pipeline.busy) return;
+    els.playButton.disabled = true;
+    try {
+      await pipeline.generate(Number(els.intervalInput.value));
+    } finally {
+      els.playButton.disabled = false;
+    }
   });
 
-  // --- Reset de la acumulación ---
-  els.resetButton.addEventListener("click", () => strobe.reset());
+  // --- Reset: vuelve al fondo limpio ---
+  els.resetButton.addEventListener("click", () => strobe.resetAccumulator());
 
-  // --- Guardar PNG (patrón de descarga del original) ---
+  // --- Guardar PNG ---
   els.saveButton.addEventListener("click", () => {
+    if (!strobe.ready) return;
     const a = document.createElement("a");
     a.href = strobe.toDataURL();
     a.download = "sequence.png";
@@ -63,17 +106,4 @@ export function setupUI(els, videoSource, strobe) {
     a.click();
     document.body.removeChild(a);
   });
-
-  // --- Indicador de progreso ---
-  const video = videoSource.video;
-  const updateProgress = () => {
-    if (!video.duration || Number.isNaN(video.duration)) {
-      els.progress.textContent = "";
-      return;
-    }
-    const pct = Math.round((video.currentTime / video.duration) * 100);
-    els.progress.textContent = video.ended ? "listo" : `${pct}%`;
-  };
-  video.addEventListener("timeupdate", updateProgress);
-  video.addEventListener("ended", updateProgress);
 }

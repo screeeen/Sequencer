@@ -1,123 +1,148 @@
-// Núcleo del efecto estroboscópico.
+// Motor del efecto estroboscópico (ingeniería de imagen).
 //
-// Modelo: una escena de cámara fija. El primer frame (o uno elegido) es el
-// "fondo". Por cada frame muestreado detectamos los píxeles que difieren del
-// fondo por encima de un umbral (el sujeto en movimiento) y los acumulamos en
-// una única imagen, dejando al sujeto repetido en todas sus posiciones.
+// Pipeline de calidad por frame:
+//   1. Fondo robusto = mediana temporal de varios frames (buildBackgroundModel).
+//   2. Máscara de sujeto = distancia de CROMA al fondo (YCbCr) + diferencia de
+//      luma adaptativa al ruido, con supresión de sombras.
+//   3. Limpieza espacial: apertura/cierre morfológico + descarte de blobs
+//      pequeños + feather del borde -> alpha suave.
+//   4. Compositing del sujeto sobre el acumulador con ese alpha (sin costuras).
+
+import {
+  rgbaToYCbCr,
+  buildBackgroundModel,
+  openClose,
+  dropSmallBlobs,
+  feather,
+} from "./imageops.js";
+
+const MAX_DIM = 1280; // cota de resolución de trabajo (perf/memoria)
 
 export class Strobe {
-  /**
-   * @param {HTMLCanvasElement} outputCanvas  canvas visible donde se compone el resultado
-   */
   constructor(outputCanvas) {
     this.canvas = outputCanvas;
     this.ctx = outputCanvas.getContext("2d", { willReadFrequently: true });
 
-    // Canvas de trabajo (oculto) donde se dibuja cada frame del vídeo.
-    this.work = document.createElement("canvas");
-    this.workCtx = this.work.getContext("2d", { willReadFrequently: true });
+    this.width = outputCanvas.width;
+    this.height = outputCanvas.height;
 
-    this.background = null; // ImageData del fondo
-    this.accumulator = null; // ImageData que se va componiendo
+    this.background = null; // Uint8ClampedArray RGBA (mediana)
+    this.bgY = null;
+    this.bgCb = null;
+    this.bgCr = null;
+    this.noise = null; // MAD de luma por píxel
+    this.accumulator = null; // ImageData en construcción
 
-    // Parámetros ajustables desde la UI.
+    // Parámetros de la UI.
     this.threshold = 30;
-    this.highlight = false; // si true, el sujeto se pinta de un color sólido
+    this.highlight = false;
     this.color = { r: 255, g: 0, b: 0 };
   }
 
-  /** Ajusta los canvas a la resolución del vídeo. Llamar al cargar metadata. */
-  resize(width, height) {
-    this.canvas.width = width;
-    this.canvas.height = height;
-    this.work.width = width;
-    this.work.height = height;
+  /** Ajusta dimensiones de trabajo a partir de la resolución del vídeo. */
+  resize(videoWidth, videoHeight) {
+    const scale = Math.min(1, MAX_DIM / Math.max(videoWidth, videoHeight));
+    this.width = Math.round(videoWidth * scale) || 1;
+    this.height = Math.round(videoHeight * scale) || 1;
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
     this.background = null;
-    this.accumulator = null;
   }
 
-  /** ¿Ya tenemos un fondo capturado? */
   get ready() {
     return this.background !== null;
   }
 
-  /**
-   * Captura el frame actual del vídeo como fondo y lo pinta como base del
-   * resultado. Reinicia cualquier acumulación previa.
-   */
-  captureBackground(video) {
-    this.workCtx.drawImage(video, 0, 0, this.work.width, this.work.height);
-    this.background = this.workCtx.getImageData(
-      0,
-      0,
-      this.work.width,
-      this.work.height
-    );
-    // El acumulador parte de una copia del fondo.
+  /** Construye el modelo de fondo (mediana + ruido) a partir de N frames. */
+  setBackground(frames) {
+    const { bg, noise } = buildBackgroundModel(frames, this.width, this.height);
+    this.background = bg;
+    this.noise = noise;
+    const { y, cb, cr } = rgbaToYCbCr(bg, this.width, this.height);
+    this.bgY = y;
+    this.bgCb = cb;
+    this.bgCr = cr;
+    this.resetAccumulator();
+  }
+
+  /** Reinicia el acumulador a una copia del fondo y lo pinta. */
+  resetAccumulator() {
+    if (!this.ready) return;
     this.accumulator = new ImageData(
-      new Uint8ClampedArray(this.background.data),
-      this.background.width,
-      this.background.height
+      new Uint8ClampedArray(this.background),
+      this.width,
+      this.height
     );
-    this.ctx.putImageData(this.accumulator, 0, 0);
+    this.flush();
   }
 
   /**
-   * Dibuja el frame actual, detecta el sujeto frente al fondo y lo fusiona en
-   * el acumulador. Refresca el canvas visible.
+   * Calcula la máscara alpha (0..255) del sujeto para un frame dado.
+   * @param {ImageData} frame
+   * @returns {Uint8ClampedArray} alpha por píxel
    */
-  accumulateFrame(video) {
-    if (!this.ready) return;
+  maskFrame(frame) {
+    const w = this.width;
+    const h = this.height;
+    const n = w * h;
+    const { y, cb, cr } = rgbaToYCbCr(frame.data, w, h);
+    const raw = new Uint8Array(n);
 
-    this.workCtx.drawImage(video, 0, 0, this.work.width, this.work.height);
-    const current = this.workCtx.getImageData(
-      0,
-      0,
-      this.work.width,
-      this.work.height
-    );
+    const Tc = this.threshold; // umbral de croma
+    for (let i = 0; i < n; i++) {
+      const dCb = cb[i] - this.bgCb[i];
+      const dCr = cr[i] - this.bgCr[i];
+      const dC = Math.sqrt(dCb * dCb + dCr * dCr);
+      const dY = y[i] - this.bgY[i];
+      const Ty = Math.max(Tc * 1.2, 4 * this.noise[i] + 6);
 
-    const cur = current.data;
-    const bg = this.background.data;
-    const acc = this.accumulator.data;
-    const t = this.threshold;
-    const { r: hr, g: hg, b: hb } = this.color;
-
-    for (let i = 0; i < cur.length; i += 4) {
-      const dr = Math.abs(cur[i] - bg[i]);
-      const dg = Math.abs(cur[i + 1] - bg[i + 1]);
-      const db = Math.abs(cur[i + 2] - bg[i + 2]);
-
-      // Foreground: difiere del fondo en algún canal por encima del umbral.
-      if (dr > t || dg > t || db > t) {
-        if (this.highlight) {
-          acc[i] = hr;
-          acc[i + 1] = hg;
-          acc[i + 2] = hb;
-        } else {
-          acc[i] = cur[i];
-          acc[i + 1] = cur[i + 1];
-          acc[i + 2] = cur[i + 2];
-        }
-        acc[i + 3] = 255;
+      let fg = false;
+      if (dC > Tc) {
+        fg = true; // cambio de color claro
+      } else if (Math.abs(dY) > Ty) {
+        // Cambio de brillo con croma similar: sujeto gris sobre fondo gris,
+        // salvo que sea una sombra (más oscuro, mismo color, ratio moderado).
+        const ratio = y[i] / Math.max(this.bgY[i], 1);
+        const isShadow = dY < 0 && ratio > 0.35 && ratio < 0.92;
+        fg = !isShadow;
       }
+      raw[i] = fg ? 255 : 0;
     }
 
+    const cleaned = openClose(raw, w, h, 1);
+    const minArea = Math.max(40, Math.round(n * 0.0006));
+    dropSmallBlobs(cleaned, w, h, minArea);
+    const radius = Math.max(1, Math.round(Math.min(w, h) / 400));
+    return feather(cleaned, w, h, radius);
+  }
+
+  /** Compone un frame sobre el acumulador usando el alpha dado. */
+  composite(frame, alpha) {
+    const acc = this.accumulator.data;
+    const src = frame.data;
+    const hr = this.color.r;
+    const hg = this.color.g;
+    const hb = this.color.b;
+    const useHighlight = this.highlight;
+    for (let i = 0; i < alpha.length; i++) {
+      const a = alpha[i] / 255;
+      if (a === 0) continue;
+      const p = i * 4;
+      const tr = useHighlight ? hr : src[p];
+      const tg = useHighlight ? hg : src[p + 1];
+      const tb = useHighlight ? hb : src[p + 2];
+      acc[p] = acc[p] * (1 - a) + tr * a;
+      acc[p + 1] = acc[p + 1] * (1 - a) + tg * a;
+      acc[p + 2] = acc[p + 2] * (1 - a) + tb * a;
+      acc[p + 3] = 255;
+    }
+  }
+
+  /** Vuelca el acumulador al canvas visible. */
+  flush() {
     this.ctx.putImageData(this.accumulator, 0, 0);
   }
 
-  /** Borra la acumulación volviendo al fondo capturado. */
-  reset() {
-    if (!this.ready) return;
-    this.accumulator = new ImageData(
-      new Uint8ClampedArray(this.background.data),
-      this.background.width,
-      this.background.height
-    );
-    this.ctx.putImageData(this.accumulator, 0, 0);
-  }
-
-  /** Resultado actual como data URL PNG. */
   toDataURL() {
     return this.canvas.toDataURL("image/png");
   }
