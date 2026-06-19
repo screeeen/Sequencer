@@ -49,10 +49,11 @@ export function setupUI(els, videoSource, strobe, pipeline) {
     }
   });
 
-  // --- Intervalo (nº de capturas): se aplica al regenerar con Play) ---
+  // --- Intervalo (nº de capturas): se aplica al reproducir con Play) ---
   const syncInterval = () => {
     const ms = Number(els.intervalInput.value);
     videoSource.setInterval(ms);
+    pipeline.setInterval(ms);
     els.intervalLabel.textContent = `${ms} ms`;
   };
   els.intervalInput.addEventListener("input", syncInterval);
@@ -81,15 +82,13 @@ export function setupUI(els, videoSource, strobe, pipeline) {
   });
   strobe.color = hexToRgb(els.colorInput.value);
 
-  // --- Play: genera el estrobo (pre-pasada offline) ---
-  els.playButton.addEventListener("click", async () => {
+  // --- Play: reproduce el vídeo; el pipeline captura durante la reproducción
+  // y compone al terminar (funciona en iOS gracias al gesto + playsinline) ---
+  els.playButton.addEventListener("click", () => {
     if (pipeline.busy) return;
-    els.playButton.disabled = true;
-    try {
-      await pipeline.generate(Number(els.intervalInput.value));
-    } finally {
-      els.playButton.disabled = false;
-    }
+    els.progress.textContent = "capturing 0%";
+    const p = videoSource.video.play();
+    if (p && p.catch) p.catch(() => (els.progress.textContent = "tap play ▶"));
   });
 
   // --- Reset: vuelve al fondo limpio ---
