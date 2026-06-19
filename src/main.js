@@ -4,6 +4,7 @@ import { createVideoSource } from "./video.js";
 import { createStrobe } from "./strobe.js";
 import { createPipeline } from "./pipeline.js";
 import { setupUI } from "./ui.js";
+import { VERSION } from "./version.js";
 
 const els = {
   video: document.getElementById("videoPlayer"),
@@ -26,3 +27,5 @@ const videoSource = createVideoSource(els.video);
 const pipeline = createPipeline(els.video, strobe);
 
 setupUI(els, videoSource, strobe, pipeline);
+
+document.getElementById("version").textContent = `v${VERSION}`;

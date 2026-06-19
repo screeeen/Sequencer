@@ -68,6 +68,12 @@ p {
   font-size: 14pt;
 }
 
+.version {
+  font-size: 10pt;
+  color: #aaa;
+  text-align: right;
+}
+
 .file-field {
   display: flex;
   flex-direction: column;
