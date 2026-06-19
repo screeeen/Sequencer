@@ -45,6 +45,11 @@ export function setupUI(els, videoSource, strobe) {
   });
   strobe.color = hexToRgb(els.colorInput.value);
 
+  // --- Reproducir (inline, sin fullscreen en iOS gracias a playsinline) ---
+  els.playButton.addEventListener("click", () => {
+    videoSource.video.play();
+  });
+
   // --- Reset de la acumulación ---
   els.resetButton.addEventListener("click", () => strobe.reset());
 

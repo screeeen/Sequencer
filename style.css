@@ -82,6 +82,18 @@ p {
   background: #111;
 }
 
+#video-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#play {
+  align-self: flex-start;
+  font-size: 14pt;
+  padding: 10px 24px;
+}
+
 #controls {
   display: flex;
   flex-direction: column;

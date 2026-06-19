@@ -32,9 +32,17 @@
 
       <section id="video-panel">
         <h2>Source</h2>
-        <video muted controls id="videoPlayer" crossorigin="anonymous">
+        <video
+          muted
+          controls
+          playsinline
+          webkit-playsinline
+          id="videoPlayer"
+          crossorigin="anonymous"
+        >
           <source src="video_adxnap.mov" />
         </video>
+        <button id="play" type="button">Play</button>
       </section>
 
       <section id="controls">

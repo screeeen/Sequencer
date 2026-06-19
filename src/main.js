@@ -14,6 +14,7 @@ const els = {
   thresholdLabel: document.getElementById("threshold-value"),
   highlightToggle: document.getElementById("highlight"),
   colorInput: document.getElementById("color"),
+  playButton: document.getElementById("play"),
   resetButton: document.getElementById("reset"),
   saveButton: document.getElementById("save"),
   progress: document.getElementById("progress"),
