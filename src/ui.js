@@ -2,6 +2,8 @@
 // vídeo y el pipeline de generación. Cada bloque conecta un control con su
 // efecto y, cuando procede, dispara una recomposición desde la caché.
 
+import { renderAnalysis } from "./histview.js";
+
 /** Convierte un color "#rrggbb" a un objeto {r, g, b} (0..255). */
 function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
@@ -113,10 +115,12 @@ export function setupUI(els, videoSource, strobe, pipeline) {
   syncThreshold();
 
   // El pipeline calcula el threshold óptimo tras cada captura (fase
-  // "analyzing"); lo reflejamos en el slider para que se pueda afinar a mano.
-  pipeline.onAutoThreshold = (t) => {
+  // "analyzing"); lo reflejamos en el slider para que se pueda afinar a mano
+  // y pintamos el histograma del análisis en el acordeón.
+  pipeline.onAutoThreshold = (t, analysis) => {
     els.thresholdInput.value = t;
     syncThreshold();
+    if (analysis) renderAnalysis(els.histCanvas, els.histStats, analysis);
   };
 
   // HIGHLIGHT SUBJECT: pinta el sujeto detectado con un color sólido en lugar

@@ -97,6 +97,18 @@
             <div id="progress-fill" class="progress-fill"></div>
           </div>
         </div>
+
+        <details id="analysis" class="analysis">
+          <summary>Analysis — how the threshold was picked</summary>
+          <p class="hint">
+            Histogram of per-pixel difference scores against the background
+            model (in sigmas, log scale), accumulated from sampled frames.
+            Light bars = background noise, dark bars = subject; the dashed
+            line is the cut Otsu's method picked.
+          </p>
+          <canvas id="histogram" width="960" height="220"></canvas>
+          <p id="analysis-stats" class="hint">Play a video to run the analysis.</p>
+        </details>
       </section>
 
       <section id="result">

@@ -138,8 +138,9 @@ export function createPipeline(video, strobe) {
 
   /**
    * Auto-threshold: acumula el histograma de scores (sigmas) de frames
-   * muestreados y separa ruido de fondo vs sujeto con Otsu. Devuelve el valor
-   * en unidades del slider (sigma * 8), acotado a un rango sensato.
+   * muestreados y separa ruido de fondo vs sujeto con Otsu. Devuelve el
+   * threshold en unidades del slider (sigma * 8, acotado a un rango sensato)
+   * junto con los datos del análisis para poder visualizarlo.
    */
   const analyzeThreshold = async () => {
     p.onProgress("analyzing", 0);
@@ -151,8 +152,9 @@ export function createPipeline(video, strobe) {
       p.onProgress("analyzing", (i + 1) / samples.length);
       await yieldToUI();
     }
-    const sigma = (otsuThreshold(hist) * SIGMA_MAX) / hist.length;
-    return Math.round(Math.min(80, Math.max(16, sigma * 8)));
+    const cutSigma = (otsuThreshold(hist) * SIGMA_MAX) / hist.length;
+    const threshold = Math.round(Math.min(80, Math.max(16, cutSigma * 8)));
+    return { threshold, hist, cutSigma, sigmaMax: SIGMA_MAX, sampleCount: samples.length };
   };
 
   const onEnded = async () => {
@@ -166,9 +168,9 @@ export function createPipeline(video, strobe) {
       const bgFrames = p.frames.filter((_, i) => i % step === 0);
       strobe.setBackground(bgFrames);
       await yieldToUI();
-      const threshold = await analyzeThreshold();
-      strobe.threshold = threshold;
-      p.onAutoThreshold(threshold);
+      const analysis = await analyzeThreshold();
+      strobe.threshold = analysis.threshold;
+      p.onAutoThreshold(analysis.threshold, analysis);
       await composeAll(selectIndices(intervalMs));
     } finally {
       p.busy = false;

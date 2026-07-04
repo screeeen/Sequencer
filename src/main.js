@@ -23,6 +23,8 @@ const els = {
   progress: document.getElementById("progress"),
   progressRow: document.getElementById("progress-row"),
   progressFill: document.getElementById("progress-fill"),
+  histCanvas: document.getElementById("histogram"),
+  histStats: document.getElementById("analysis-stats"),
 };
 
 // Motor de imagen, fuente de vídeo y orquestador; se conectan en setupUI.
