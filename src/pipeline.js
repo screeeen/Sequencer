@@ -8,8 +8,12 @@
 // NO recaptura: submuestrea la caché y recompone. Los frames se cachean para
 // recomponer al instante al cambiar cualquier parámetro.
 
+import { otsuThreshold } from "./imageops.js";
+
 const MAX_FRAMES = 60; // cota de frames cacheados (memoria)
 const MAX_BG_SAMPLES = 25; // frames usados para la mediana de fondo
+const MAX_ANALYZE_SAMPLES = 16; // frames usados para el auto-threshold
+const SIGMA_MAX = 16; // rango del histograma de scores (en sigmas)
 
 /** Cede el hilo para que el navegador repinte (progreso fluido). */
 function yieldToUI() {
@@ -35,6 +39,7 @@ export function createPipeline(video, strobe) {
     frames: [], // ImageData[] capturados durante la reproducción
     busy: false,
     onProgress: () => {}, // (phase, fraction)
+    onAutoThreshold: () => {}, // (threshold) — la UI refleja el valor calculado
   };
 
   p.setInterval = (ms) => {
@@ -57,13 +62,13 @@ export function createPipeline(video, strobe) {
     return captureCtx.getImageData(0, 0, w, h);
   };
 
-  /** Submuestrea la caché: primer frame + los espaciados >= intervalMs. */
-  const selectFrames = (ms) => {
+  /** Submuestrea la caché: índices del primer frame + los espaciados >= intervalMs. */
+  const selectIndices = (ms) => {
     const sel = [];
     let last = -Infinity;
     for (let i = 0; i < p.frames.length; i++) {
       if (i === 0 || frameTimes[i] - last >= ms) {
-        sel.push(p.frames[i]);
+        sel.push(i);
         last = frameTimes[i];
       }
     }
@@ -113,19 +118,43 @@ export function createPipeline(video, strobe) {
     else timeoutLoop();
   };
 
-  const composeAll = async (list) => {
+  const composeAll = async (indices) => {
     strobe.resetAccumulator();
-    const total = list.length;
+    const total = indices.length;
     for (let i = 0; i < total; i++) {
-      const frame = list[i];
-      // Vecinos para la pista de movimiento (3-frame differencing).
-      const alpha = strobe.maskFrame(frame, list[i - 1], list[i + 1]);
+      const idx = indices[i];
+      const frame = p.frames[idx];
+      // Vecinos DENSOS de la caché para la pista de movimiento (3-frame
+      // differencing): miden movimiento real (~captureInterval de separación)
+      // sea cual sea el intervalo elegido por el usuario.
+      const alpha = strobe.maskFrame(frame, p.frames[idx - 1], p.frames[idx + 1]);
       strobe.composite(frame, alpha);
       strobe.flush();
       p.onProgress("compositing", (i + 1) / total);
       await yieldToUI();
     }
     p.onProgress("done", 1);
+  };
+
+  /**
+   * Auto-threshold: acumula el histograma de scores (sigmas) de frames
+   * muestreados y separa ruido de fondo vs sujeto con Otsu. Devuelve el
+   * threshold en unidades del slider (sigma * 8, acotado a un rango sensato)
+   * junto con los datos del análisis para poder visualizarlo.
+   */
+  const analyzeThreshold = async () => {
+    p.onProgress("analyzing", 0);
+    const hist = new Uint32Array(256);
+    const step = Math.max(1, Math.floor(p.frames.length / MAX_ANALYZE_SAMPLES));
+    const samples = p.frames.filter((_, i) => i % step === 0);
+    for (let i = 0; i < samples.length; i++) {
+      strobe.scoreHistogram(samples[i], hist, SIGMA_MAX);
+      p.onProgress("analyzing", (i + 1) / samples.length);
+      await yieldToUI();
+    }
+    const cutSigma = (otsuThreshold(hist) * SIGMA_MAX) / hist.length;
+    const threshold = Math.round(Math.min(80, Math.max(16, cutSigma * 8)));
+    return { threshold, hist, cutSigma, sigmaMax: SIGMA_MAX, sampleCount: samples.length };
   };
 
   const onEnded = async () => {
@@ -139,7 +168,10 @@ export function createPipeline(video, strobe) {
       const bgFrames = p.frames.filter((_, i) => i % step === 0);
       strobe.setBackground(bgFrames);
       await yieldToUI();
-      await composeAll(selectFrames(intervalMs));
+      const analysis = await analyzeThreshold();
+      strobe.threshold = analysis.threshold;
+      p.onAutoThreshold(analysis.threshold, analysis);
+      await composeAll(selectIndices(intervalMs));
     } finally {
       p.busy = false;
     }
@@ -153,7 +185,7 @@ export function createPipeline(video, strobe) {
     if (p.busy || !strobe.ready || p.frames.length === 0) return;
     p.busy = true;
     try {
-      await composeAll(selectFrames(intervalMs));
+      await composeAll(selectIndices(intervalMs));
     } finally {
       p.busy = false;
     }

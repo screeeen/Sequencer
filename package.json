@@ -1,0 +1,12 @@
+{
+  "name": "sequencer",
+  "private": true,
+  "type": "module",
+  "version": "0.8.1",
+  "scripts": {
+    "dev": "vite --open"
+  },
+  "devDependencies": {
+    "vite": "^7.3.0"
+  }
+}

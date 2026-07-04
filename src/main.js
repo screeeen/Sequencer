@@ -21,6 +21,10 @@ const els = {
   resetButton: document.getElementById("reset"),
   saveButton: document.getElementById("save"),
   progress: document.getElementById("progress"),
+  progressRow: document.getElementById("status"),
+  progressFill: document.getElementById("progress-fill"),
+  histCanvas: document.getElementById("histogram"),
+  histStats: document.getElementById("analysis-stats"),
 };
 
 // Motor de imagen, fuente de vídeo y orquestador; se conectan en setupUI.

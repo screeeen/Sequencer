@@ -45,6 +45,21 @@
         <button id="play" type="button">Play</button>
       </section>
 
+      <section id="status" hidden>
+        <h2>Status</h2>
+        <div class="progress-row">
+          <span id="progress" class="progress-label"></span>
+          <div class="progress-track">
+            <div id="progress-fill" class="progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="result">
+        <h2>Result</h2>
+        <canvas id="output" width="960" height="540"></canvas>
+      </section>
+
       <section id="controls">
         <h2>Controls</h2>
 
@@ -67,8 +82,10 @@
             <span id="threshold-value" class="value"></span>
           </div>
           <p class="hint">
-            Detection sensitivity. Lower = catches more of the subject (and more
-            noise); higher = stricter and cleaner. 0 = maximum sensitivity.
+            Detection sensitivity. Set automatically after each capture (the
+            app analyzes the video and picks the best value); tweak to taste.
+            Lower = catches more of the subject (and more noise); higher =
+            stricter and cleaner.
           </p>
         </div>
 
@@ -87,13 +104,19 @@
         <div class="control buttons">
           <button id="reset" type="button">reset</button>
           <button id="save" type="button">save picture</button>
-          <span id="progress" class="value"></span>
         </div>
-      </section>
 
-      <section id="result">
-        <h2>Result</h2>
-        <canvas id="output" width="960" height="540"></canvas>
+        <details id="analysis" class="analysis">
+          <summary>Analysis — how the threshold was picked</summary>
+          <p class="hint">
+            Histogram of per-pixel difference scores against the background
+            model (in sigmas, log scale), accumulated from sampled frames.
+            Light bars = background noise, dark bars = subject; the dashed
+            line is the cut Otsu's method picked.
+          </p>
+          <canvas id="histogram" width="960" height="220"></canvas>
+          <p id="analysis-stats" class="hint">Play a video to run the analysis.</p>
+        </details>
       </section>
 
       <footer id="version" class="version"></footer>

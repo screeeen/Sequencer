@@ -100,6 +100,30 @@ export function createStrobe(outputCanvas) {
   };
 
   /**
+   * Acumula en `hist` el histograma de scores (sigmas de Mahalanobis, mismo
+   * cálculo que maskFrame) del frame frente al modelo de fondo. Los scores
+   * >= maxSigma caen en el último bin. Base del auto-threshold.
+   */
+  s.scoreHistogram = (frame, hist, maxSigma) => {
+    const n = s.width * s.height;
+    const { y, cb, cr } = rgbaToYCbCr(frame.data, s.width, s.height);
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += y[i];
+    const gain = Math.min(1.4, Math.max(0.7, s.bgMeanY / Math.max(sum / n, 1)));
+    const scale = hist.length / maxSigma;
+    const FLOOR_Y = 2;
+    const FLOOR_C = 2;
+    for (let i = 0; i < n; i++) {
+      const zy = (y[i] * gain - s.mY[i]) / Math.max(s.sY[i], FLOOR_Y);
+      const zcb = (cb[i] - s.mCb[i]) / Math.max(s.sCb[i], FLOOR_C);
+      const zcr = (cr[i] - s.mCr[i]) / Math.max(s.sCr[i], FLOOR_C);
+      const score = Math.sqrt(zy * zy + zcb * zcb + zcr * zcr);
+      const bin = Math.min(hist.length - 1, (score * scale) | 0);
+      hist[bin]++;
+    }
+  };
+
+  /**
    * Máscara alpha (0..255) del sujeto. `prev`/`next` (ImageData vecinos) son
    * opcionales y habilitan la pista de movimiento.
    */
