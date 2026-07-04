@@ -100,6 +100,39 @@ export function buildBackgroundModel(frames, width, height) {
   return { bg, mY, mCb, mCr, sY, sCb, sCr };
 }
 
+/**
+ * Umbral de Otsu sobre un histograma: índice de bin que maximiza la varianza
+ * entre las dos clases (aquí: ruido de fondo vs sujeto). Devuelve el índice
+ * del primer bin de la clase alta.
+ */
+export function otsuThreshold(hist) {
+  let total = 0;
+  let sum = 0;
+  for (let i = 0; i < hist.length; i++) {
+    total += hist[i];
+    sum += i * hist[i];
+  }
+  let sumB = 0;
+  let wB = 0;
+  let best = 0;
+  let bestVar = -1;
+  for (let i = 0; i < hist.length; i++) {
+    wB += hist[i];
+    if (wB === 0) continue;
+    const wF = total - wB;
+    if (wF === 0) break;
+    sumB += i * hist[i];
+    const mB = sumB / wB;
+    const mF = (sum - sumB) / wF;
+    const between = wB * wF * (mB - mF) * (mB - mF);
+    if (between > bestVar) {
+      bestVar = between;
+      best = i + 1;
+    }
+  }
+  return best;
+}
+
 /** Erosión binaria 3x3 (mínimo del vecindario). Mantiene 0/255. */
 export function erode(mask, width, height, out) {
   out = out || new Uint8Array(mask.length);

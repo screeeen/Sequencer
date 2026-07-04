@@ -8,8 +8,12 @@
 // NO recaptura: submuestrea la caché y recompone. Los frames se cachean para
 // recomponer al instante al cambiar cualquier parámetro.
 
+import { otsuThreshold } from "./imageops.js";
+
 const MAX_FRAMES = 60; // cota de frames cacheados (memoria)
 const MAX_BG_SAMPLES = 25; // frames usados para la mediana de fondo
+const MAX_ANALYZE_SAMPLES = 16; // frames usados para el auto-threshold
+const SIGMA_MAX = 16; // rango del histograma de scores (en sigmas)
 
 /** Cede el hilo para que el navegador repinte (progreso fluido). */
 function yieldToUI() {
@@ -35,6 +39,7 @@ export function createPipeline(video, strobe) {
     frames: [], // ImageData[] capturados durante la reproducción
     busy: false,
     onProgress: () => {}, // (phase, fraction)
+    onAutoThreshold: () => {}, // (threshold) — la UI refleja el valor calculado
   };
 
   p.setInterval = (ms) => {
@@ -131,6 +136,25 @@ export function createPipeline(video, strobe) {
     p.onProgress("done", 1);
   };
 
+  /**
+   * Auto-threshold: acumula el histograma de scores (sigmas) de frames
+   * muestreados y separa ruido de fondo vs sujeto con Otsu. Devuelve el valor
+   * en unidades del slider (sigma * 8), acotado a un rango sensato.
+   */
+  const analyzeThreshold = async () => {
+    p.onProgress("analyzing", 0);
+    const hist = new Uint32Array(256);
+    const step = Math.max(1, Math.floor(p.frames.length / MAX_ANALYZE_SAMPLES));
+    const samples = p.frames.filter((_, i) => i % step === 0);
+    for (let i = 0; i < samples.length; i++) {
+      strobe.scoreHistogram(samples[i], hist, SIGMA_MAX);
+      p.onProgress("analyzing", (i + 1) / samples.length);
+      await yieldToUI();
+    }
+    const sigma = (otsuThreshold(hist) * SIGMA_MAX) / hist.length;
+    return Math.round(Math.min(80, Math.max(16, sigma * 8)));
+  };
+
   const onEnded = async () => {
     if (p.busy || p.frames.length < 2) return;
     p.busy = true;
@@ -142,6 +166,9 @@ export function createPipeline(video, strobe) {
       const bgFrames = p.frames.filter((_, i) => i % step === 0);
       strobe.setBackground(bgFrames);
       await yieldToUI();
+      const threshold = await analyzeThreshold();
+      strobe.threshold = threshold;
+      p.onAutoThreshold(threshold);
       await composeAll(selectIndices(intervalMs));
     } finally {
       p.busy = false;

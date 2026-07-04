@@ -26,6 +26,7 @@ function dataURLtoBlob(dataURL) {
 const PHASE_LABEL = {
   capturing: "capturing",
   modeling: "background…",
+  analyzing: "auto threshold",
   compositing: "compositing",
   done: "done",
 };
@@ -110,6 +111,13 @@ export function setupUI(els, videoSource, strobe, pipeline) {
     scheduleRecompose();
   });
   syncThreshold();
+
+  // El pipeline calcula el threshold óptimo tras cada captura (fase
+  // "analyzing"); lo reflejamos en el slider para que se pueda afinar a mano.
+  pipeline.onAutoThreshold = (t) => {
+    els.thresholdInput.value = t;
+    syncThreshold();
+  };
 
   // HIGHLIGHT SUBJECT: pinta el sujeto detectado con un color sólido en lugar
   // de sus píxeles reales (toggle + selector de color).
