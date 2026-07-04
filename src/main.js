@@ -36,3 +36,9 @@ setupUI(els, videoSource, strobe, pipeline);
 
 // Muestra la versión de la app en el pie.
 document.getElementById("version").textContent = `v${VERSION}`;
+
+// Service worker (PWA). Solo fuera del dev server de vite: en dev estorba
+// (cachea recargas) y en GitHub Pages import.meta.env no existe -> registra.
+if (!import.meta.env?.DEV && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register(`sw.js?v=${VERSION}`).catch(() => {});
+}

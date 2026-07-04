@@ -50,12 +50,15 @@ API oficial de Instagram; export a vídeo; rotación en el crop.
   el HTML** (para no servir shells viejos), cache-first para el resto;
   `activate` purga claves de otras versiones. El vídeo de ejemplo se cachea en
   runtime (stale-while-revalidate), no en la instalación.
-- **[DECISIÓN] SW y vite**: `sw.js` vive como archivo estático en `public/`
-  (vite lo copia tal cual) con la lista de precache escrita a mano (~5
-  entradas). Para no duplicar la versión dentro del SW, el registro la pasa
-  por query — `navigator.serviceWorker.register(`sw.js?v=${VERSION}`)` — y el
-  SW usa `location.search` como clave de cache; cada release invalida el SW
-  anterior automáticamente.
+- **[DECISIÓN] SW y despliegue**: el despliegue es **GitHub Pages sirviendo
+  la rama en crudo** (Vercel desconectado), así que `sw.js` y
+  `manifest.webmanifest` viven en la **raíz del repo** con rutas relativas
+  (Pages sirve bajo `/Sequencer/`). Vite queda solo como servidor de dev. La
+  lista de precache se escribe a mano. Para no duplicar la versión dentro del
+  SW, el registro la pasa por query —
+  `navigator.serviceWorker.register(`sw.js?v=${VERSION}`)` — y el SW usa
+  `location.search` como clave de cache; cada release invalida el anterior.
+  En dev (vite) no se registra (`import.meta.env.DEV`).
 
 Aceptación: Lighthouse "installable" en verde; instalada en iOS y Android abre
 standalone; offline sirve la app (y el vídeo de ejemplo si ya se visitó);
