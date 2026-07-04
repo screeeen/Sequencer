@@ -1,12 +1,13 @@
-# Spec — Flujo Instagram, Fase 1 (rama `isntaconnect`)
+# Spec — Flujo Instagram, Fase 1 (rama `isntaconnect`) · v2 (decidido)
 
 Objetivo: que el ciclo **conseguir vídeo → strobo → publicar en Instagram**
 sea cómodo en móvil, manteniendo la app 100% cliente (sin backend, sin tocar
-los ToS de Meta desde la app).
+los ToS de Meta desde la app). La adquisición del vídeo queda fuera de la app
+(AirDrop, yt-dlp, atajo de iOS, grabación de pantalla); esta fase elimina la
+fricción de todo lo demás.
 
-La adquisición del vídeo queda **fuera de la app** (AirDrop de un amigo,
-yt-dlp, atajo de iOS, grabación de pantalla); esta fase elimina la fricción de
-todo lo demás.
+Este spec es **ejecutable de principio a fin**: todas las decisiones que la
+v1 dejaba abiertas están cerradas y marcadas como *[DECISIÓN]*.
 
 ## Alcance
 
@@ -15,134 +16,188 @@ todo lo demás.
 | 1 | PWA instalable | Icono "Strobo" en el móvil, abre a pantalla completa |
 | 2 | `share_target` (Android) | "Compartir → Strobo" desde galería/apps de descarga |
 | 3 | Trim + crop del vídeo | Aislar la jugada y quitar la UI de las grabaciones de pantalla |
-| 4 | Presets de export IG | PNG a 4:5, 9:16, 1:1 u original, listo para publicar |
+| 4 | Presets de export IG | PNG a 4:5, 9:16, 1:1 u original, con encuadre en vivo |
 | 5 | Crédito | Estampar @autor en una esquina antes de compartir |
+| 6 | Robustez móvil | Wake lock en captura, avisos de códec, guía de vacío |
 
-**No-goals** (documentados, no incluidos): campo "pegar enlace" con backend
-extractor (módulo futuro, desacoplado); API oficial de Instagram (solo sirve
-para contenido propio); export a vídeo.
+**No-goals**: pegar-enlace con backend extractor (módulo futuro desacoplado);
+API oficial de Instagram; export a vídeo; rotación en el crop.
 
-## 1. PWA instalable
+## Principios (usabilidad y calidad de imagen)
 
-- `manifest.webmanifest`: `name: "Strobo"`, `display: standalone`,
-  `orientation: portrait`, `background_color/theme_color` acordes al diseño,
-  iconos 192/512 + `apple-touch-icon` 180 (generar desde el título girado).
-- `sw.js` (service worker): app-shell **cache-first con clave de versión**
-  (importa `VERSION` o se genera con el hash del build): HTML, CSS, JS e
-  iconos. El vídeo de ejemplo (`video_adxnap.mov`, 1,6 MB) se cachea bajo
-  demanda, no en la instalación. Al activar una versión nueva se purgan las
-  caches viejas.
-- `index.html`: `<link rel="manifest">`, meta `apple-mobile-web-app-*`.
-- **Riesgo conocido**: en iOS la PWA instalada pierde el contexto al ir a
-  segundo plano con más facilidad; no afecta al flujo (la caché de frames es
-  por sesión de todos modos).
+- **Un gesto, una cosa**: nada de modos ocultos; trim, crop y encuadre se
+  manipulan directamente sobre el vídeo/resultado.
+- **Nunca perder trabajo silenciosamente**: cualquier acción que invalide la
+  caché de frames (trim/crop) lo avisa en Status antes de exigir replay.
+- **La calidad manda en el export**: el PNG final se compone a la resolución
+  del preset (1080+), con reescalado de alta calidad, nunca desde el canvas de
+  pantalla.
+- **Presupuesto de memoria fijo**: 60 frames × RGBA a resolución de trabajo
+  ≤ 1280 px de lado mayor (~220 MB peor caso). Ninguna feature lo supera.
 
-Criterio de aceptación: Lighthouse marca la app como instalable; instalada en
-iOS y Android abre sin barra de navegador y funciona offline (con el vídeo de
-ejemplo ya visitado).
+## 1. PWA instalable — v0.9.0
 
-## 2. Web Share Target (solo Android/Chromium)
+- `manifest.webmanifest`: `name/short_name: "Strobo"`, `display: standalone`,
+  `orientation: portrait`, `start_url: "./"`, `background_color: "#ffffff"`,
+  `theme_color: "#ffffff"`.
+- **[DECISIÓN] Iconos**: SVG fuente `icons/icon.svg` — una "S" blanca en peso
+  300 sobre `#111`, con la rotación característica del título (−6°) — y los
+  PNG 192/512/180 exportados **una sola vez y commiteados**. Sin paso de
+  build de iconos ni dependencias nuevas.
+- `sw.js` en la **raíz** (scope completo), registrado desde `main.js` solo en
+  producción (`if (!import.meta.env.DEV)`). Estrategia: precache del app-shell
+  (HTML, CSS, JS, iconos) con clave `strobo-v${VERSION}`; **network-first para
+  el HTML** (para no servir shells viejos), cache-first para el resto;
+  `activate` purga claves de otras versiones. El vídeo de ejemplo se cachea en
+  runtime (stale-while-revalidate), no en la instalación.
+- **[DECISIÓN] SW y vite**: `sw.js` vive como archivo estático en `public/`
+  (vite lo copia tal cual) con la lista de precache escrita a mano (~5
+  entradas). Para no duplicar la versión dentro del SW, el registro la pasa
+  por query — `navigator.serviceWorker.register(`sw.js?v=${VERSION}`)` — y el
+  SW usa `location.search` como clave de cache; cada release invalida el SW
+  anterior automáticamente.
+
+Aceptación: Lighthouse "installable" en verde; instalada en iOS y Android abre
+standalone; offline sirve la app (y el vídeo de ejemplo si ya se visitó);
+publicar una versión nueva actualiza el shell en la segunda carga como tarde.
+
+## 2. Web Share Target (Android/Chromium) — v0.9.1
 
 - En el manifest:
 
 ```json
 "share_target": {
-  "action": "/share",
+  "action": "./share",
   "method": "POST",
   "enctype": "multipart/form-data",
   "params": { "files": [{ "name": "video", "accept": ["video/*"] }] }
 }
 ```
 
-- El SW intercepta el `POST /share`, guarda el `File` (Cache API o IndexedDB),
-  responde con redirect a `/?shared=1`; al arrancar, `main.js` detecta el flag,
-  recupera el archivo y lo carga por el mismo camino que `fileInput`
-  (`videoSource.loadFile`).
-- En iOS no existe soporte: no se anuncia ni rompe nada; el picker de Fotos
-  sigue siendo la vía.
+- El SW intercepta `POST ./share`: `event.respondWith(Response.redirect("./?shared=1"))`
+  y en paralelo `formData()` → guarda el `File` en **IndexedDB**
+  (**[DECISIÓN]**: IndexedDB y no Cache API — un `File` con su nombre/tipo se
+  guarda tal cual como valor; helper propio de ~30 líneas `src/sharedb.js`,
+  sin dependencias: `putShared(file)` / `takeShared()` que borra al leer).
+- `main.js`: si `location.search` incluye `shared=1`, `takeShared()` y carga
+  por el mismo camino que el picker; limpia la query con `replaceState`.
+- iOS no lo soporta: no se anuncia ni afecta.
 
-Criterio de aceptación: en Android, "Compartir" un vídeo desde Fotos/galería
-muestra Strobo y el vídeo queda cargado y listo para Play.
+Aceptación: en Android real, Compartir un vídeo desde Fotos abre Strobo con el
+vídeo cargado y listo para Play; compartir dos veces seguidas funciona.
 
-## 3. Trim + crop
+## 3. Trim + crop — v0.10.0
 
-El caso que resuelve: grabaciones de pantalla (UI de Instagram arriba/abajo,
-la jugada empieza tarde) y clips deportivos largos. Además mejora la calidad
-del strobo: `MAX_FRAMES = 60` se reparte solo sobre el segmento útil.
+Resuelve grabaciones de pantalla (UI de IG arriba/abajo, la jugada empieza
+tarde) y clips largos. Bonus de calidad: los 60 frames se concentran en el
+segmento útil, y el crop recupera resolución de trabajo (se re-aplica
+`MAX_DIM` al recorte).
 
-### Trim (temporal)
+### Trim
 
-- UI: dos sliders (in/out) bajo el vídeo, con el tiempo en s; el vídeo salta
-  a `in` al soltar (preview). Por defecto in=0, out=duración.
-- Pipeline: `onPlay` hace `video.currentTime = in` antes de capturar;
-  `maybeCapture` ignora frames fuera de `[in, out]` y al superar `out` se
-  pausa el vídeo y se dispara la composición (mismo camino que `ended`).
-- `captureInterval = (out - in) / MAX_FRAMES`.
-- El progreso de captura pasa a ser `(t - in) / (out - in)`.
+- **[DECISIÓN] UI**: un solo track con **dos pulgares** (in/out), implementado
+  con dos `<input type="range">` superpuestos (técnica estándar, sin
+  dependencias), etiquetas `0.0s – 3.4s` en vivo. Al soltar un pulgar, el
+  vídeo hace seek a ese extremo (preview inmediato del encuadre temporal).
+- Pipeline: `onPlay` asegura `currentTime = in`; `maybeCapture` descarta
+  frames fuera de `[in, out]`; al superar `out`, pausa y dispara la
+  composición (mismo camino que `ended`). `captureInterval = (out−in)/60`.
+  Progreso de captura: `(t − in) / (out − in)`.
 
-### Crop (espacial)
+### Crop
 
-- UI: rectángulo arrastrable con 4 asas sobre el `<video>` (overlay
-  absolutamente posicionado), con botón "reset". Sin rotación ni aspecto
-  bloqueado en v1.
-- Pipeline: `grab()` usa el rect como *source rect* de `drawImage`; la
-  resolución de trabajo del strobo pasa a ser la del recorte (re-aplicando la
-  cota `MAX_DIM`). Cambiar trim/crop **invalida la caché de frames** (hay que
-  recapturar: aviso "replay to apply" en Status).
+- **[DECISIÓN] UI**: rectángulo con **asas solo en los 4 bordes** (no
+  esquinas) + arrastre del interior para mover; zonas táctiles ≥ 44 px;
+  `touch-action: none` y `setPointerCapture` en el overlay para no pelear con
+  el scroll; botón "reset". Racional: el caso real dominante es recortar
+  bandas de UI (bordes), y las esquinas duplican superficie de error en
+  pantallas pequeñas.
+- Pipeline: `grab()` usa el rect (en coords de vídeo) como *source rect* de
+  `drawImage`; `strobe.resize()` recibe las dimensiones del recorte.
+- **Invalidación**: cambiar trim o crop con caché viva ⇒ Status muestra
+  "replay to apply trim/crop" (persistente, no barra) y se limpia la caché.
+  Los sliders de threshold/interval siguen recomponiendo al instante.
 
-Criterio de aceptación: con una grabación de pantalla de un reel, se puede
-recortar la UI y quedarse con 3 s de jugada, y el strobo sale limpio y con
-más densidad de frames que sin trim.
+Aceptación: con una grabación de pantalla de un reel se puede recortar la UI,
+quedarse con 3 s de jugada y el strobo sale limpio, con más densidad de frames
+y mayor resolución efectiva que sin trim/crop.
 
-## 4. Presets de export para Instagram
+## 4. Presets de export + encuadre en vivo — v0.11.0
 
-- Selector en la sección Result: `original · 1:1 (1080) · 4:5 (1080×1350) ·
-  9:16 (1080×1920)`, por defecto `original`.
-- Modos de encuadre por preset:
-  - **fit**: el strobo entero dentro del lienzo, bandas rellenas con un
-    desenfoque ampliado del propio strobo (estándar en apps de edición).
-  - **fill**: recorte centrado que llena el lienzo, con arrastre para
-    reencuadrar (un offset x/y basta en v1).
-- Implementación: módulo nuevo `src/exporter.js` — canvas offscreen del
-  tamaño del preset, compone (blur de fondo si fit + strobo + crédito) y
-  genera el PNG. `ui.js` lo llama desde "save picture"; el canvas de Result
-  no cambia (sigue mostrando la resolución de trabajo).
-- La vista previa del preset se muestra como marco/overlay proporcional sobre
-  el canvas de Result (barato y suficiente en v1).
+- Selector segmentado en Result: `original · 1:1 · 4:5 · 9:16`
+  (1080², 1080×1350, 1080×1920). Persistido en `localStorage`.
+- **[DECISIÓN] Encuadre en vivo: SÍ.** Con preset ≠ original, sobre el canvas
+  de Result se dibuja un **marco atenuado** (máscara semitransparente fuera
+  del área del preset). En modo fill, arrastrar dentro del marco desplaza el
+  encuadre (offset x/y). Coste bajo: es un overlay DOM, no re-composición.
+- Modos por preset: **fit** (strobo entero, bandas con desenfoque ampliado
+  del propio strobo) y **fill** (llena el lienzo, arrastre para reencuadrar).
+  Default: **fill** (es lo que Instagram muestra) con el sujeto principal
+  centrado.
+- **[DECISIÓN] Calidad del export** (módulo nuevo `src/exporter.js`):
+  - Canvas offscreen al tamaño exacto del preset.
+  - Reescalado en **dos pasos máximo** con `imageSmoothingQuality: "high"`
+    (evita el aliasing del escalado directo cuando el factor es > 2×).
+  - Fondo fit: strobo escalado a cubrir + `ctx.filter = blur(…)` proporcional
+    (~2.5% del lado mayor) + velo blanco 12% para separar del contenido.
+  - Formato **PNG** (Instagram recomprime; partir de PNG evita doble pérdida).
+  - El canvas de Result no cambia (sigue en resolución de trabajo).
+- "save picture" exporta con el preset activo; con `original` el
+  comportamiento actual se mantiene intacto.
 
-Criterio de aceptación: exportar en 4:5 produce un PNG 1080×1350 que Instagram
-acepta sin recortar; en fill se puede reencuadrar al sujeto.
+Aceptación: export 4:5 → PNG 1080×1350 exacto que Instagram publica sin
+recortar; en fill el arrastre permite encuadrar al sujeto; sin banding ni
+aliasing visibles comparado con el canvas.
 
-## 5. Crédito
+## 5. Crédito — v0.11.0 (junto al exporter)
 
-- Toggle "add credit" + campo de texto (`@usuario`) junto a los controles de
-  export. Persistido en `localStorage` (se repite el mismo autor a menudo).
-- El exporter estampa el texto en la esquina inferior derecha: system-ui,
-  tamaño ~2.2% de la altura del lienzo, blanco con sombra suave (legible sobre
-  cualquier fondo), margen 3%.
+- Toggle "add credit" + campo `@usuario`, persistidos en `localStorage`.
+- Estampado por el exporter (nunca en el canvas de trabajo): esquina inferior
+  derecha, system-ui **semibold al 2.2% de la altura** del lienzo, blanco con
+  sombra `rgba(0,0,0,.45)` blur 4, margen 3%.
 
-## Plan de entrega (commits/versiones)
+## 6. Robustez móvil — transversal
 
-1. `v0.9.0` — PWA: manifest + SW + iconos (features 1).
-2. `v0.9.1` — share_target Android (feature 2; PATCH porque solo añade una vía
-   de entrada).
-3. `v0.10.0` — trim + crop con invalidación de caché (feature 3, la mayor).
-4. `v0.11.0` — exporter con presets + crédito (features 4 y 5).
+- **Wake lock** (`navigator.wakeLock.request("screen")`) mientras se captura
+  — si la pantalla se apaga a mitad de reel, la captura muere. Se libera al
+  componer. Silencioso si el navegador no lo soporta.
+- **Códecs**: las grabaciones de pantalla de iOS son HEVC `.mov`; Chrome
+  Android a veces no las decodifica. Si `video.error` o `videoWidth === 0`
+  tras `loadedmetadata` ⇒ mensaje en Status: "this video format isn't
+  supported by this browser — try Safari or convert to MP4".
+- **Estado vacío**: bajo el picker, tres líneas de guía (get the video → play
+  → share), que desaparecen al cargar vídeo.
+- **Auto-scroll** suave a la sección Status al pulsar Play en viewport móvil
+  (si Status no está visible).
 
-Cada paso se valida en navegador (`yarn dev`) y en un iPhone/Android reales
-antes de push; el SW se prueba también con `yarn build && vite preview`
-(la caché no se sirve igual en dev).
+## Plan de entrega
 
-## Riesgos y decisiones abiertas
+| Versión | Contenido | Validación |
+|---------|-----------|------------|
+| v0.9.0 | PWA (manifest, SW, iconos) | Lighthouse + iPhone + Android reales |
+| v0.9.1 | share_target + sharedb | Android real, compartir ×2 |
+| v0.10.0 | trim + crop + invalidación + wake lock + códecs | grabación de pantalla real |
+| v0.11.0 | exporter (presets, fit/fill, encuadre) + crédito | publicar de verdad en IG |
 
-- **SW vs vite**: en dev el SW se desactiva (`import.meta.env.DEV`); en
-  producción Vercel sirve el build y GitHub Pages el estático — el SW debe
-  registrarse con ruta relativa para funcionar en ambos.
-- **Crop UI en móvil**: gestos de arrastre sobre el vídeo compiten con el
-  scroll; las asas deben ser grandes (44px) y el arrastre solo activo dentro
-  del rect.
-- **Memoria**: trim denso sube la densidad de frames en el segmento; mantener
-  `MAX_FRAMES = 60` como cota dura.
-- Abierta: ¿el preset debería aplicarse también al canvas de Result en vivo
-  (ver el encuadre final mientras ajustas)? Se decide al implementar la
-  feature 4 según coste.
+Cada versión: `yarn dev` durante el desarrollo, `yarn build && vite preview`
+para validar el SW (en dev está desactivado), `node --check` en los módulos,
+y prueba en dispositivo real antes de push. El commit de cada versión lleva
+su bump en `src/version.js` + `package.json`.
+
+## Matriz de dispositivos (mínimo por versión)
+
+| | iPhone Safari | Android Chrome | Desktop Chrome/Safari |
+|---|---|---|---|
+| Instalación PWA | ✓ | ✓ | — |
+| share_target | n/a | ✓ | — |
+| Captura + strobo | ✓ | ✓ | ✓ |
+| Share/save PNG | ✓ (share sheet) | ✓ | ✓ (descarga) |
+
+## Riesgos aceptados
+
+- iOS mata PWAs en segundo plano con facilidad: la caché de frames es por
+  sesión, no hay nada que persistir; aceptado.
+- El blur de fondo en fit sobre canvas grande cuesta ~100–200 ms en móvil:
+  aceptable porque solo ocurre al exportar.
+- `ctx.filter` no está en Safari < 16: fallback a fondo blanco (detección de
+  soporte, una línea).
