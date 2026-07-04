@@ -21,6 +21,7 @@ const SHELL = [
   "./src/imageops.js",
   "./src/video.js",
   "./src/cropper.js",
+  "./src/exporter.js",
   "./src/histview.js",
   "./src/sharedb.js",
   "./src/version.js",

@@ -36,6 +36,10 @@
           accept="video/mp4,video/x-m4v,video/*"
         />
       </label>
+      <p class="hint" id="guide">
+        1 — get the video (AirDrop, screen-record, share) · 2 — trim to the
+        action and play to capture · 3 — save the picture to Instagram.
+      </p>
 
       <section id="video-panel">
         <h2>Source</h2>
@@ -89,7 +93,40 @@
 
       <section id="result">
         <h2>Result</h2>
-        <canvas id="output" width="960" height="540"></canvas>
+        <div id="result-box">
+          <canvas id="output" width="960" height="540"></canvas>
+          <div id="frame-mask" hidden></div>
+        </div>
+
+        <div class="control">
+          <label>Export size</label>
+          <div class="segmented" id="preset-seg">
+            <button type="button" data-preset="original" class="active">original</button>
+            <button type="button" data-preset="square">1:1</button>
+            <button type="button" data-preset="portrait">4:5</button>
+            <button type="button" data-preset="story">9:16</button>
+          </div>
+          <div class="segmented" id="mode-seg" hidden>
+            <button type="button" data-mode="fill" class="active">fill</button>
+            <button type="button" data-mode="fit">fit</button>
+          </div>
+        </div>
+        <p class="hint">
+          Instagram sizes. In fill, drag the bright window on the picture to
+          frame the subject; fit keeps the whole picture with blurred bands.
+        </p>
+
+        <div class="control">
+          <label for="creditText">Add credit</label>
+          <input id="creditToggle" type="checkbox" />
+          <input
+            id="creditText"
+            type="text"
+            placeholder="@author"
+            autocapitalize="off"
+            autocorrect="off"
+          />
+        </div>
       </section>
 
       <section id="controls">

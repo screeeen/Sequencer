@@ -4,6 +4,7 @@
 
 import { renderAnalysis } from "./histview.js";
 import { takeShared } from "./sharedb.js";
+import { PRESETS, exportImage } from "./exporter.js";
 
 /** Convierte un color "#rrggbb" a un objeto {r, g, b} (0..255). */
 function hexToRgb(hex) {
@@ -68,7 +69,10 @@ export function setupUI(els, videoSource, strobe, pipeline, cropper) {
       els.progress.textContent = `${label} ${pct}%`;
       els.progressFill.style.width = `${pct}%`;
     }
-    if (phase === "done") hideTimer = setTimeout(hideProgress, 1500);
+    if (phase === "done") {
+      hideTimer = setTimeout(hideProgress, 1500);
+      updateFrameMask(); // el canvas puede haber cambiado de tamaño/aspecto
+    }
   };
   pipeline.onProgress = setProgress;
 
@@ -90,6 +94,7 @@ export function setupUI(els, videoSource, strobe, pipeline, cropper) {
     pipeline.clear();
     clearTimeout(hideTimer);
     hideProgress();
+    els.guide.hidden = true;
   };
 
   els.fileInput.addEventListener("change", () => {
@@ -211,7 +216,9 @@ export function setupUI(els, videoSource, strobe, pipeline, cropper) {
   // playsinline). Si el navegador bloquea play(), avisamos.
   els.playButton.addEventListener("click", () => {
     if (pipeline.busy) return;
+    els.guide.hidden = true;
     setProgress("capturing", 0);
+    els.progressRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
     const p = videoSource.video.play();
     if (p && p.catch)
       p.catch(() => {
@@ -223,11 +230,125 @@ export function setupUI(els, videoSource, strobe, pipeline, cropper) {
   // RESET: descarta la acumulación y vuelve al fondo limpio.
   els.resetButton.addEventListener("click", () => strobe.resetAccumulator());
 
-  // SAVE PICTURE: en iOS abre la hoja de compartir (-> "Guardar imagen" en
-  // Fotos) vía Web Share API; en el resto, descarga el PNG.
+  // EXPORT: preset de tamaño (Instagram), modo fill/fit, encuadre arrastrable
+  // y crédito. Preferencias persistidas; el offset de encuadre es por sesión.
+  const exportState = Object.assign(
+    { preset: "original", mode: "fill", creditOn: false, credit: "" },
+    JSON.parse(localStorage.getItem("strobo.export") || "{}")
+  );
+  const offset = { x: 0.5, y: 0.5 };
+  const saveExportState = () =>
+    localStorage.setItem("strobo.export", JSON.stringify(exportState));
+
+  const syncSegmented = (seg, attr, value) => {
+    for (const b of seg.querySelectorAll("button")) {
+      b.classList.toggle("active", b.dataset[attr] === value);
+    }
+  };
+
+  // Máscara de encuadre: enseña sobre Result la ventana exacta del preset
+  // (solo en fill; en fit entra la imagen entera y no hay nada que encuadrar).
+  const updateFrameMask = () => {
+    const preset = PRESETS[exportState.preset];
+    const show = preset && exportState.mode === "fill";
+    els.frameMask.hidden = !show;
+    if (!show) return;
+    const at = preset.w / preset.h; // aspecto del preset
+    const as = strobe.width / strobe.height; // aspecto del strobo
+    let w = 100;
+    let h = 100;
+    let left = 0;
+    let top = 0;
+    if (at < as) {
+      w = (at / as) * 100;
+      left = offset.x * (100 - w);
+    } else if (at > as) {
+      h = (as / at) * 100;
+      top = offset.y * (100 - h);
+    }
+    els.frameMask.style.width = `${w}%`;
+    els.frameMask.style.height = `${h}%`;
+    els.frameMask.style.left = `${left}%`;
+    els.frameMask.style.top = `${top}%`;
+  };
+
+  els.presetSeg.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    exportState.preset = b.dataset.preset;
+    syncSegmented(els.presetSeg, "preset", exportState.preset);
+    els.modeSeg.hidden = exportState.preset === "original";
+    saveExportState();
+    updateFrameMask();
+  });
+
+  els.modeSeg.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    exportState.mode = b.dataset.mode;
+    syncSegmented(els.modeSeg, "mode", exportState.mode);
+    saveExportState();
+    updateFrameMask();
+  });
+
+  // Arrastre del encuadre (un solo eje tiene holgura según los aspectos).
+  let frameDrag = null;
+  els.frameMask.addEventListener("pointerdown", (e) => {
+    frameDrag = { px: e.clientX, py: e.clientY, x0: offset.x, y0: offset.y };
+    els.frameMask.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  els.frameMask.addEventListener("pointermove", (e) => {
+    if (!frameDrag) return;
+    const preset = PRESETS[exportState.preset];
+    if (!preset) return;
+    const b = els.resultBox.getBoundingClientRect();
+    const at = preset.w / preset.h;
+    const as = strobe.width / strobe.height;
+    const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+    if (at < as) {
+      const room = b.width * (1 - at / as);
+      if (room > 0) offset.x = clamp01(frameDrag.x0 + (e.clientX - frameDrag.px) / room);
+    } else if (at > as) {
+      const room = b.height * (1 - as / at);
+      if (room > 0) offset.y = clamp01(frameDrag.y0 + (e.clientY - frameDrag.py) / room);
+    }
+    updateFrameMask();
+  });
+  const endFrameDrag = () => (frameDrag = null);
+  els.frameMask.addEventListener("pointerup", endFrameDrag);
+  els.frameMask.addEventListener("pointercancel", endFrameDrag);
+
+  // Crédito.
+  els.creditToggle.addEventListener("change", () => {
+    exportState.creditOn = els.creditToggle.checked;
+    saveExportState();
+  });
+  els.creditText.addEventListener("input", () => {
+    exportState.credit = els.creditText.value.trim();
+    saveExportState();
+  });
+
+  // Estado inicial desde lo persistido.
+  syncSegmented(els.presetSeg, "preset", exportState.preset);
+  syncSegmented(els.modeSeg, "mode", exportState.mode);
+  els.modeSeg.hidden = exportState.preset === "original";
+  els.creditToggle.checked = exportState.creditOn;
+  els.creditText.value = exportState.credit;
+  updateFrameMask();
+
+  // SAVE PICTURE: compone el export final (preset + encuadre + crédito) y en
+  // iOS abre la hoja de compartir (-> Instagram) vía Web Share API; en el
+  // resto, descarga el PNG. Todo síncrono: debe vivir dentro del gesto.
   els.saveButton.addEventListener("click", () => {
     if (!strobe.ready) return;
-    const blob = dataURLtoBlob(strobe.toDataURL());
+    const canvas = exportImage(strobe.canvas, {
+      preset: PRESETS[exportState.preset],
+      mode: exportState.mode,
+      offset,
+      credit: exportState.creditOn ? exportState.credit : "",
+    });
+    const blob = dataURLtoBlob(canvas.toDataURL("image/png"));
     const file = new File([blob], "sequence.png", { type: "image/png" });
 
     // navigator.share debe llamarse dentro del gesto -> nada async antes.

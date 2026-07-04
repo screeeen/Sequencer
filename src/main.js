@@ -33,6 +33,13 @@ const els = {
   trimIn: document.getElementById("trim-in"),
   trimOut: document.getElementById("trim-out"),
   trimLabel: document.getElementById("trim-value"),
+  guide: document.getElementById("guide"),
+  resultBox: document.getElementById("result-box"),
+  frameMask: document.getElementById("frame-mask"),
+  presetSeg: document.getElementById("preset-seg"),
+  modeSeg: document.getElementById("mode-seg"),
+  creditToggle: document.getElementById("creditToggle"),
+  creditText: document.getElementById("creditText"),
 };
 
 // Motor de imagen, fuente de vídeo, recorte y orquestador; se conectan en setupUI.

@@ -110,6 +110,7 @@ p {
 /* --- Crop: rectángulo con asas en los bordes sobre el vídeo --- */
 #video-box {
   position: relative;
+  overflow: hidden; /* recorta la sombra-máscara del rectángulo */
 }
 
 #crop-rect {
@@ -135,8 +136,8 @@ p {
   cursor: ns-resize;
 }
 
-.crop-handle[data-edge="n"] { top: -22px; }
-.crop-handle[data-edge="s"] { bottom: -22px; }
+.crop-handle[data-edge="n"] { top: 0; }
+.crop-handle[data-edge="s"] { bottom: 0; }
 
 .crop-handle[data-edge="e"],
 .crop-handle[data-edge="w"] {
@@ -147,8 +148,8 @@ p {
   cursor: ew-resize;
 }
 
-.crop-handle[data-edge="e"] { right: -22px; }
-.crop-handle[data-edge="w"] { left: -22px; }
+.crop-handle[data-edge="e"] { right: 0; }
+.crop-handle[data-edge="w"] { left: 0; }
 
 /* la marca visible dentro de la zona táctil de 44px */
 .crop-handle::after {
@@ -207,6 +208,58 @@ p {
 
 .trim-value {
   width: 6rem;
+}
+
+/* --- Export: máscara de encuadre y control segmentado --- */
+#result-box {
+  position: relative;
+  overflow: hidden; /* recorta la sombra-máscara de la ventana de encuadre */
+}
+
+#frame-mask {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+  touch-action: none;
+}
+
+#frame-mask:active {
+  cursor: grabbing;
+}
+
+.segmented {
+  display: flex;
+}
+
+.segmented button {
+  border-radius: 0;
+  border-right-width: 0;
+  padding: 8px 12px;
+}
+
+.segmented button:first-child {
+  border-radius: 5px 0 0 5px;
+}
+
+.segmented button:last-child {
+  border-radius: 0 5px 5px 0;
+  border-right-width: 1px;
+}
+
+.segmented button.active {
+  background: #444;
+  border-color: #444;
+  color: #fff;
+}
+
+#creditText {
+  flex: 1;
+  max-width: 14rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 8px 10px;
+  font-size: 11pt;
 }
 
 #controls {
