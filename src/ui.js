@@ -30,6 +30,7 @@ const PHASE_LABEL = {
   capturing: "capturing",
   modeling: "background…",
   analyzing: "auto threshold",
+  stale: "replay ▶ to apply trim/crop",
   compositing: "compositing",
   done: "done",
 };
@@ -40,8 +41,9 @@ const PHASE_LABEL = {
  * @param {ReturnType<import("./video.js").createVideoSource>} videoSource
  * @param {ReturnType<import("./strobe.js").createStrobe>} strobe
  * @param {ReturnType<import("./pipeline.js").createPipeline>} pipeline
+ * @param {ReturnType<import("./cropper.js").createCropper>} cropper
  */
-export function setupUI(els, videoSource, strobe, pipeline) {
+export function setupUI(els, videoSource, strobe, pipeline, cropper) {
   // Indicador de progreso: etiqueta + barra. Captura y composición tienen
   // fracción conocida (barra determinada); "modeling" no -> barra indeterminada
   // (animación CSS). Al terminar, la barra se oculta tras una pausa breve.
@@ -58,9 +60,12 @@ export function setupUI(els, videoSource, strobe, pipeline) {
     if (indeterminate) {
       els.progress.textContent = label;
       els.progressFill.style.width = "";
+    } else if (phase === "done" || phase === "stale") {
+      els.progress.textContent = label;
+      els.progressFill.style.width = phase === "done" ? "100%" : "0%";
     } else {
       const pct = Math.round(fraction * 100);
-      els.progress.textContent = phase === "done" ? label : `${label} ${pct}%`;
+      els.progress.textContent = `${label} ${pct}%`;
       els.progressFill.style.width = `${pct}%`;
     }
     if (phase === "done") hideTimer = setTimeout(hideProgress, 1500);
@@ -147,6 +152,59 @@ export function setupUI(els, videoSource, strobe, pipeline) {
     scheduleRecompose();
   });
   strobe.color = hexToRgb(els.colorInput.value);
+
+  // TRIM: solo se capturan frames entre los dos pulgares. Mover un pulgar
+  // hace seek de preview e invalida la caché (hay que volver a reproducir).
+  const trimLabel = () => {
+    const a = Number(els.trimIn.value);
+    const b = Number(els.trimOut.value);
+    els.trimLabel.textContent = `${a.toFixed(1)}–${b.toFixed(1)}s`;
+  };
+  const applyTrim = (moved) => {
+    let a = Number(els.trimIn.value);
+    let b = Number(els.trimOut.value);
+    if (b - a < 0.2) {
+      // los pulgares no se cruzan
+      if (moved === els.trimIn) els.trimIn.value = a = Math.max(0, b - 0.2);
+      else els.trimOut.value = b = a + 0.2;
+    }
+    pipeline.setTrim(a, b);
+    els.video.currentTime = moved === els.trimOut ? b : a;
+    trimLabel();
+    if (pipeline.hasFrames) pipeline.invalidate();
+  };
+  els.trimIn.addEventListener("input", () => applyTrim(els.trimIn));
+  els.trimOut.addEventListener("input", () => applyTrim(els.trimOut));
+
+  // CROP: el rectángulo sobre el vídeo decide qué región se captura.
+  els.cropResetBtn.addEventListener("click", () => cropper.reset());
+  cropper.onChange = () => {
+    els.cropResetBtn.hidden = cropper.isFull;
+    if (pipeline.hasFrames) pipeline.invalidate();
+  };
+
+  // Al conocer la duración: trim a rango completo y controles visibles.
+  els.video.addEventListener("loadedmetadata", () => {
+    if (!els.video.videoWidth) return showCodecError();
+    const d = els.video.duration || 0;
+    els.trimIn.max = els.trimOut.max = d.toFixed(1);
+    els.trimIn.value = "0";
+    els.trimOut.value = d.toFixed(1);
+    pipeline.setTrim(0, d);
+    trimLabel();
+    els.trimRow.hidden = false;
+    els.cropRect.hidden = false;
+    cropper.reset();
+  });
+
+  // Códecs no soportados (p. ej. HEVC .mov en Chrome Android).
+  const showCodecError = () => {
+    els.progressRow.hidden = false;
+    els.progressFill.classList.remove("indeterminate");
+    els.progressFill.style.width = "0%";
+    els.progress.textContent = "format not supported — try MP4 (H.264)";
+  };
+  els.video.addEventListener("error", showCodecError);
 
   // PLAY: reproduce el vídeo; el pipeline captura durante la reproducción y
   // compone al terminar (funciona en iOS gracias al gesto del usuario +

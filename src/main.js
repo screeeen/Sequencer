@@ -3,6 +3,7 @@
 import { createVideoSource } from "./video.js";
 import { createStrobe } from "./strobe.js";
 import { createPipeline } from "./pipeline.js";
+import { createCropper } from "./cropper.js";
 import { setupUI } from "./ui.js";
 import { VERSION } from "./version.js";
 
@@ -25,14 +26,23 @@ const els = {
   progressFill: document.getElementById("progress-fill"),
   histCanvas: document.getElementById("histogram"),
   histStats: document.getElementById("analysis-stats"),
+  videoBox: document.getElementById("video-box"),
+  cropRect: document.getElementById("crop-rect"),
+  cropResetBtn: document.getElementById("cropReset"),
+  trimRow: document.getElementById("trim-row"),
+  trimIn: document.getElementById("trim-in"),
+  trimOut: document.getElementById("trim-out"),
+  trimLabel: document.getElementById("trim-value"),
 };
 
-// Motor de imagen, fuente de vídeo y orquestador; se conectan en setupUI.
+// Motor de imagen, fuente de vídeo, recorte y orquestador; se conectan en setupUI.
 const strobe = createStrobe(els.output);
 const videoSource = createVideoSource(els.video);
 const pipeline = createPipeline(els.video, strobe);
+const cropper = createCropper(els.videoBox, els.cropRect);
+pipeline.cropper = cropper;
 
-setupUI(els, videoSource, strobe, pipeline);
+setupUI(els, videoSource, strobe, pipeline, cropper);
 
 // Muestra la versión de la app en el pie.
 document.getElementById("version").textContent = `v${VERSION}`;

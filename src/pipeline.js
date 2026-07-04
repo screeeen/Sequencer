@@ -33,11 +33,15 @@ export function createPipeline(video, strobe) {
   let intervalMs = 100; // separación pedida por el usuario (submuestreo)
   let captureInterval = 30; // separación de captura (lo más densa posible)
   let lastMs = -Infinity;
+  let trimIn = 0; // segmento a capturar, en segundos
+  let trimOut = Infinity;
+  let wakeLock = null; // evita que la pantalla se apague a mitad de captura
 
   // Estado público (la UI lo lee/escribe).
   const p = {
     frames: [], // ImageData[] capturados durante la reproducción
     busy: false,
+    cropper: null, // recorte espacial (src/cropper.js); null = frame completo
     onProgress: () => {}, // (phase, fraction)
     onAutoThreshold: () => {}, // (threshold) — la UI refleja el valor calculado
   };
@@ -46,19 +50,59 @@ export function createPipeline(video, strobe) {
     intervalMs = ms;
   };
 
+  p.setTrim = (inS, outS) => {
+    trimIn = inS;
+    trimOut = outS;
+  };
+
+  /** Trim/crop cambian qué se captura: la caché deja de valer -> replay. */
+  p.invalidate = () => {
+    p.clear();
+    p.onProgress("stale", 0);
+  };
+
+  const acquireWakeLock = async () => {
+    try {
+      wakeLock = (await navigator.wakeLock?.request("screen")) ?? null;
+    } catch {
+      wakeLock = null;
+    }
+  };
+  const releaseWakeLock = () => {
+    if (wakeLock) {
+      wakeLock.release().catch(() => {});
+      wakeLock = null;
+    }
+  };
+
+  /** Rect de recorte en píxeles del vídeo (frame completo si no hay crop). */
+  const cropRect = () => {
+    const c = p.cropper;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    if (!c || c.isFull) return { sx: 0, sy: 0, sw: vw, sh: vh };
+    return {
+      sx: Math.round(c.x * vw),
+      sy: Math.round(c.y * vh),
+      sw: Math.max(1, Math.round(c.w * vw)),
+      sh: Math.max(1, Math.round(c.h * vh)),
+    };
+  };
+
   /** Vacía la caché (al cargar otro vídeo). */
   p.clear = () => {
     p.frames = [];
     frameTimes = [];
   };
 
-  /** Captura el frame actual del vídeo a la resolución de trabajo del estrobo. */
+  /** Captura el frame actual (con el crop aplicado) a resolución de trabajo. */
   const grab = () => {
     const w = strobe.width;
     const h = strobe.height;
     if (capture.width !== w) capture.width = w;
     if (capture.height !== h) capture.height = h;
-    captureCtx.drawImage(video, 0, 0, w, h);
+    const r = cropRect();
+    captureCtx.drawImage(video, r.sx, r.sy, r.sw, r.sh, 0, 0, w, h);
     return captureCtx.getImageData(0, 0, w, h);
   };
 
@@ -81,12 +125,21 @@ export function createPipeline(video, strobe) {
     if (p.frames.length >= MAX_FRAMES) return;
     if (!video.videoWidth) return;
     const tMs = video.currentTime * 1000;
+    const inMs = trimIn * 1000;
+    const outMs = Math.min((video.duration || Infinity) * 1000, trimOut * 1000);
+    if (tMs < inMs) return; // aún no hemos llegado al segmento
+    if (tMs > outMs) {
+      // Fin del segmento: paramos y componemos sin esperar a "ended".
+      video.pause();
+      finish();
+      return;
+    }
     if (p.frames.length === 0 || tMs - lastMs >= captureInterval) {
       p.frames.push(grab());
       frameTimes.push(tMs);
       lastMs = tMs;
-      const frac = video.duration ? video.currentTime / video.duration : 0;
-      p.onProgress("capturing", Math.min(1, frac));
+      const frac = (tMs - inMs) / Math.max(1, outMs - inMs);
+      p.onProgress("capturing", Math.min(1, Math.max(0, frac)));
     }
   };
 
@@ -105,15 +158,25 @@ export function createPipeline(video, strobe) {
 
   const onPlay = () => {
     if (p.busy) return;
-    if (video.videoWidth) strobe.resize(video.videoWidth, video.videoHeight);
+    if (video.videoWidth) {
+      const r = cropRect();
+      strobe.resize(r.sw, r.sh); // el crop recupera resolución de trabajo
+    }
     p.clear();
     lastMs = -Infinity;
 
-    // Captura lo más densa posible (acotada a MAX_FRAMES); el intervalo del
-    // usuario se aplica luego submuestreando, sin recapturar.
-    const durMs = (video.duration || 0) * 1000;
-    captureInterval = durMs ? durMs / MAX_FRAMES : 30;
+    // Reproducimos desde el inicio del segmento de trim.
+    if (video.currentTime < trimIn || video.currentTime >= trimOut) {
+      video.currentTime = trimIn;
+    }
 
+    // Captura lo más densa posible (acotada a MAX_FRAMES) dentro del
+    // segmento; el intervalo del usuario se aplica luego submuestreando.
+    const outS = Math.min(video.duration || Infinity, trimOut);
+    const spanMs = Math.max(0, outS - trimIn) * 1000;
+    captureInterval = spanMs && isFinite(spanMs) ? spanMs / MAX_FRAMES : 30;
+
+    acquireWakeLock();
     if (supportsRVFC) rvfcLoop();
     else timeoutLoop();
   };
@@ -157,8 +220,10 @@ export function createPipeline(video, strobe) {
     return { threshold, hist, cutSigma, sigmaMax: SIGMA_MAX, sampleCount: samples.length };
   };
 
-  const onEnded = async () => {
+  /** Cierra la captura y lanza fondo + análisis + composición. */
+  const finish = async () => {
     if (p.busy || p.frames.length < 2) return;
+    releaseWakeLock();
     p.busy = true;
     try {
       // Modelo de fondo: mediana de un subconjunto de TODA la caché (robusto).
@@ -194,7 +259,8 @@ export function createPipeline(video, strobe) {
   Object.defineProperty(p, "hasFrames", { get: () => p.frames.length > 0 });
 
   video.addEventListener("play", onPlay);
-  video.addEventListener("ended", onEnded);
+  video.addEventListener("ended", finish);
+  video.addEventListener("pause", releaseWakeLock);
 
   return p;
 }

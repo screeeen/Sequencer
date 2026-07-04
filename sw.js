@@ -20,6 +20,7 @@ const SHELL = [
   "./src/pipeline.js",
   "./src/imageops.js",
   "./src/video.js",
+  "./src/cropper.js",
   "./src/histview.js",
   "./src/sharedb.js",
   "./src/version.js",

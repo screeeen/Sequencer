@@ -39,17 +39,42 @@
 
       <section id="video-panel">
         <h2>Source</h2>
-        <video
-          muted
-          controls
-          playsinline
-          webkit-playsinline
-          id="videoPlayer"
-          crossorigin="anonymous"
-        >
-          <source src="video_adxnap.mov" />
-        </video>
-        <button id="play" type="button">Play</button>
+        <div id="video-box">
+          <video
+            muted
+            playsinline
+            webkit-playsinline
+            id="videoPlayer"
+            crossorigin="anonymous"
+          >
+            <source src="video_adxnap.mov" />
+          </video>
+          <div id="crop-rect" hidden>
+            <div class="crop-handle" data-edge="n"></div>
+            <div class="crop-handle" data-edge="e"></div>
+            <div class="crop-handle" data-edge="s"></div>
+            <div class="crop-handle" data-edge="w"></div>
+          </div>
+        </div>
+
+        <div class="control trim" id="trim-row" hidden>
+          <label for="trim-in">Trim</label>
+          <div class="dual-range">
+            <input id="trim-in" type="range" min="0" max="10" step="0.1" value="0" />
+            <input id="trim-out" type="range" min="0" max="10" step="0.1" value="10" />
+          </div>
+          <span id="trim-value" class="value trim-value"></span>
+        </div>
+        <p class="hint">
+          Keep just the action: frames are captured only between the two trim
+          thumbs. Drag the box edges on the video to crop out UI bars or
+          distractions — changing either needs a replay.
+        </p>
+
+        <div class="video-actions">
+          <button id="play" type="button">Play</button>
+          <button id="cropReset" type="button" hidden>reset crop</button>
+        </div>
       </section>
 
       <section id="status" hidden>

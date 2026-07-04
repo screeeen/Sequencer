@@ -96,10 +96,117 @@ p {
   gap: 0.75rem;
 }
 
+.video-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 #play {
-  align-self: flex-start;
   font-size: 14pt;
   padding: 10px 24px;
+}
+
+/* --- Crop: rectángulo con asas en los bordes sobre el vídeo --- */
+#video-box {
+  position: relative;
+}
+
+#crop-rect {
+  position: absolute;
+  border: 1px dashed rgba(255, 255, 255, 0.85);
+  /* atenúa lo que queda fuera del recorte */
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
+  cursor: move;
+  touch-action: none;
+}
+
+.crop-handle {
+  position: absolute;
+  touch-action: none;
+}
+
+.crop-handle[data-edge="n"],
+.crop-handle[data-edge="s"] {
+  left: 50%;
+  transform: translateX(-50%);
+  width: 88px;
+  height: 44px;
+  cursor: ns-resize;
+}
+
+.crop-handle[data-edge="n"] { top: -22px; }
+.crop-handle[data-edge="s"] { bottom: -22px; }
+
+.crop-handle[data-edge="e"],
+.crop-handle[data-edge="w"] {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 88px;
+  cursor: ew-resize;
+}
+
+.crop-handle[data-edge="e"] { right: -22px; }
+.crop-handle[data-edge="w"] { left: -22px; }
+
+/* la marca visible dentro de la zona táctil de 44px */
+.crop-handle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+}
+
+.crop-handle[data-edge="n"]::after,
+.crop-handle[data-edge="s"]::after {
+  width: 36px;
+  height: 4px;
+}
+
+.crop-handle[data-edge="e"]::after,
+.crop-handle[data-edge="w"]::after {
+  width: 4px;
+  height: 36px;
+}
+
+/* --- Trim: dos pulgares sobre un mismo track --- */
+.dual-range {
+  position: relative;
+  flex: 1;
+  height: 18px;
+}
+
+.dual-range input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  pointer-events: none; /* solo los pulgares reciben eventos */
+}
+
+.dual-range input[type="range"]::-webkit-slider-thumb {
+  pointer-events: auto;
+}
+
+.dual-range input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+}
+
+/* el track del segundo input no debe tapar el del primero */
+.dual-range input[type="range"]:nth-child(2)::-webkit-slider-runnable-track {
+  background: transparent;
+}
+
+.dual-range input[type="range"]:nth-child(2)::-moz-range-track {
+  background: transparent;
+}
+
+.trim-value {
+  width: 6rem;
 }
 
 #controls {
