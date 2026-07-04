@@ -24,7 +24,7 @@ function dataURLtoBlob(dataURL) {
 
 // Etiquetas de cada fase del pipeline para el indicador de progreso.
 const PHASE_LABEL = {
-  collecting: "capturing",
+  capturing: "capturing",
   modeling: "background…",
   compositing: "compositing",
   done: "done",
@@ -71,7 +71,6 @@ export function setupUI(els, videoSource, strobe, pipeline) {
   // la caché por tiempo y recompone (más ms = menos copias, más espaciadas).
   const syncInterval = () => {
     const ms = Number(els.intervalInput.value);
-    videoSource.setInterval(ms);
     pipeline.setInterval(ms);
     els.intervalLabel.textContent = `${ms} ms`;
   };

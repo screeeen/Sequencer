@@ -3,8 +3,8 @@
 An app to create strobe / multiplicity pictures from video.
 
 Record a scene with a **fixed camera** where a subject moves across the frame.
-The app takes the first frame as the background, detects the moving subject in
-each sampled frame, and composites every position into a single image — the
+The app builds a background model (temporal median), detects the moving subject
+in each sampled frame, and composites every position into a single image — the
 classic strobe / sequence photograph.
 
 ## Usage
@@ -27,8 +27,10 @@ python3 -m http.server 8000
 ## Structure
 
 - `index.html` — markup and controls.
-- `src/strobe.js` — background capture + per-frame accumulation (the algorithm).
-- `src/video.js` — file loading and frame sampling (`requestVideoFrameCallback`).
+- `src/strobe.js` — background model + subject masking + compositing (the algorithm).
+- `src/imageops.js` — image-processing primitives (median/MAD, morphology, blobs, guided filter).
+- `src/pipeline.js` — captures frames during playback, caches them, recomposites on demand.
+- `src/video.js` — file loading.
 - `src/ui.js` — wires DOM controls to the engine.
 - `src/main.js` — entry point.
 - `style.css`, `reset.css` — styling.

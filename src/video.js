@@ -7,7 +7,6 @@
 export function createVideoSource(video) {
   const source = {
     video,
-    intervalMs: 100, // separación objetivo entre capturas
   };
 
   /** Carga un archivo local seleccionado por el usuario. */
@@ -17,11 +16,6 @@ export function createVideoSource(video) {
     }
     video.src = URL.createObjectURL(file);
     video.load();
-  };
-
-  // Guarda la separación objetivo entre capturas (la usa el pipeline).
-  source.setInterval = (ms) => {
-    source.intervalMs = ms;
   };
 
   return source;
