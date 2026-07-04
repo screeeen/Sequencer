@@ -1,5 +1,14 @@
 # Spec — Flujo Instagram, Fase 1 (rama `isntaconnect`) · v2 (decidido)
 
+> **Estado (2026-07-04): IMPLEMENTADO** en v0.9.0 → v0.11.1, desplegado en
+> GitHub Pages (rama `isntaconnect`). Pendiente: validación en dispositivos
+> reales (matriz de abajo) — sobre todo gestos de crop/trim en táctil y la
+> hoja de compartir con el PNG. Desviaciones del spec: se quitaron los
+> controles nativos del `<video>` (chocaban con el overlay de crop; el trim
+> cubre el seek) y la guía de estado vacío se oculta al cargar archivo o dar
+> a Play (no en `loadedmetadata`, que dispara el vídeo de ejemplo). La Fase 2
+> ("pegar enlace" con backend extractor) sigue siendo no-goal documentado.
+
 Objetivo: que el ciclo **conseguir vídeo → strobo → publicar en Instagram**
 sea cómodo en móvil, manteniendo la app 100% cliente (sin backend, sin tocar
 los ToS de Meta desde la app). La adquisición del vídeo queda fuera de la app
