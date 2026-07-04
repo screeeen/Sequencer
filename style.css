@@ -24,12 +24,12 @@ h1 {
   flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
-  gap: 0.02em;
-  font-size: 10pt;
-  font-weight: 700;
+  gap: 0.1em;
+  font-size: 46pt;
+  font-weight: 300;
   text-transform: uppercase;
   letter-spacing: 0;
-  line-height: 1;
+  line-height: 2;
 }
 
 .strobe-title span {
