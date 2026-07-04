@@ -38,13 +38,30 @@ const PHASE_LABEL = {
  * @param {ReturnType<import("./pipeline.js").createPipeline>} pipeline
  */
 export function setupUI(els, videoSource, strobe, pipeline) {
-  // Indicador de progreso: traduce (fase, fracción) del pipeline a texto.
-  pipeline.onProgress = (phase, fraction) => {
-    const label = PHASE_LABEL[phase] || phase;
-    const pct = Math.round(fraction * 100);
-    els.progress.textContent =
-      phase === "modeling" || phase === "done" ? label : `${label} ${pct}%`;
+  // Indicador de progreso: etiqueta + barra. Captura y composición tienen
+  // fracción conocida (barra determinada); "modeling" no -> barra indeterminada
+  // (animación CSS). Al terminar, la barra se oculta tras una pausa breve.
+  let hideTimer = null;
+  const hideProgress = () => {
+    els.progressRow.hidden = true;
   };
+  const setProgress = (phase, fraction) => {
+    clearTimeout(hideTimer);
+    els.progressRow.hidden = false;
+    const indeterminate = phase === "modeling";
+    els.progressFill.classList.toggle("indeterminate", indeterminate);
+    const label = PHASE_LABEL[phase] || phase;
+    if (indeterminate) {
+      els.progress.textContent = label;
+      els.progressFill.style.width = "";
+    } else {
+      const pct = Math.round(fraction * 100);
+      els.progress.textContent = phase === "done" ? label : `${label} ${pct}%`;
+      els.progressFill.style.width = `${pct}%`;
+    }
+    if (phase === "done") hideTimer = setTimeout(hideProgress, 1500);
+  };
+  pipeline.onProgress = setProgress;
 
   // Recompone desde la caché con un pequeño retardo (debounce), para no
   // recalcular en cada pixel mientras se arrastra un slider.
@@ -63,7 +80,8 @@ export function setupUI(els, videoSource, strobe, pipeline) {
     if (file) {
       videoSource.loadFile(file);
       pipeline.clear();
-      els.progress.textContent = "";
+      clearTimeout(hideTimer);
+      hideProgress();
     }
   });
 
@@ -110,9 +128,13 @@ export function setupUI(els, videoSource, strobe, pipeline) {
   // playsinline). Si el navegador bloquea play(), avisamos.
   els.playButton.addEventListener("click", () => {
     if (pipeline.busy) return;
-    els.progress.textContent = "capturing 0%";
+    setProgress("capturing", 0);
     const p = videoSource.video.play();
-    if (p && p.catch) p.catch(() => (els.progress.textContent = "tap play ▶"));
+    if (p && p.catch)
+      p.catch(() => {
+        els.progressFill.style.width = "0%";
+        els.progress.textContent = "tap play ▶";
+      });
   });
 
   // RESET: descarta la acumulación y vuelve al fondo limpio.
