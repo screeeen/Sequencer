@@ -210,6 +210,28 @@ p {
   width: 6rem;
 }
 
+/* En pantallas estrechas, el slider de trim baja a línea completa (si no,
+   el track queda inutilizable entre la etiqueta y el valor). */
+@media (max-width: 600px) {
+  .trim {
+    flex-wrap: wrap;
+  }
+
+  .trim label {
+    width: auto;
+    flex: 1;
+  }
+
+  .trim .trim-value {
+    width: auto;
+  }
+
+  .trim .dual-range {
+    flex: 1 1 100%;
+    order: 3;
+  }
+}
+
 /* --- Export: máscara de encuadre y control segmentado --- */
 #result-box {
   position: relative;
@@ -226,6 +248,11 @@ p {
 
 #frame-mask:active {
   cursor: grabbing;
+}
+
+/* Cada franja de botones baja a su propia línea cuando no cabe (móvil). */
+.export-control {
+  flex-wrap: wrap;
 }
 
 .segmented {
