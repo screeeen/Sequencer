@@ -57,13 +57,13 @@ export function createPipeline(video, strobe) {
     return captureCtx.getImageData(0, 0, w, h);
   };
 
-  /** Submuestrea la caché: primer frame + los espaciados >= intervalMs. */
-  const selectFrames = (ms) => {
+  /** Submuestrea la caché: índices del primer frame + los espaciados >= intervalMs. */
+  const selectIndices = (ms) => {
     const sel = [];
     let last = -Infinity;
     for (let i = 0; i < p.frames.length; i++) {
       if (i === 0 || frameTimes[i] - last >= ms) {
-        sel.push(p.frames[i]);
+        sel.push(i);
         last = frameTimes[i];
       }
     }
@@ -113,13 +113,16 @@ export function createPipeline(video, strobe) {
     else timeoutLoop();
   };
 
-  const composeAll = async (list) => {
+  const composeAll = async (indices) => {
     strobe.resetAccumulator();
-    const total = list.length;
+    const total = indices.length;
     for (let i = 0; i < total; i++) {
-      const frame = list[i];
-      // Vecinos para la pista de movimiento (3-frame differencing).
-      const alpha = strobe.maskFrame(frame, list[i - 1], list[i + 1]);
+      const idx = indices[i];
+      const frame = p.frames[idx];
+      // Vecinos DENSOS de la caché para la pista de movimiento (3-frame
+      // differencing): miden movimiento real (~captureInterval de separación)
+      // sea cual sea el intervalo elegido por el usuario.
+      const alpha = strobe.maskFrame(frame, p.frames[idx - 1], p.frames[idx + 1]);
       strobe.composite(frame, alpha);
       strobe.flush();
       p.onProgress("compositing", (i + 1) / total);
@@ -139,7 +142,7 @@ export function createPipeline(video, strobe) {
       const bgFrames = p.frames.filter((_, i) => i % step === 0);
       strobe.setBackground(bgFrames);
       await yieldToUI();
-      await composeAll(selectFrames(intervalMs));
+      await composeAll(selectIndices(intervalMs));
     } finally {
       p.busy = false;
     }
@@ -153,7 +156,7 @@ export function createPipeline(video, strobe) {
     if (p.busy || !strobe.ready || p.frames.length === 0) return;
     p.busy = true;
     try {
-      await composeAll(selectFrames(intervalMs));
+      await composeAll(selectIndices(intervalMs));
     } finally {
       p.busy = false;
     }
