@@ -3,6 +3,7 @@
 // efecto y, cuando procede, dispara una recomposición desde la caché.
 
 import { renderAnalysis } from "./histview.js";
+import { takeShared } from "./sharedb.js";
 
 /** Convierte un color "#rrggbb" a un objeto {r, g, b} (0..255). */
 function hexToRgb(hex) {
@@ -77,16 +78,28 @@ export function setupUI(els, videoSource, strobe, pipeline) {
     }, 150);
   };
 
-  // Cargar un vídeo propio: carga la fuente y vacía la caché de frames.
+  // Cargar un vídeo: carga la fuente y vacía la caché de frames. Entrada
+  // común del picker y del Web Share Target.
+  const loadVideoFile = (file) => {
+    videoSource.loadFile(file);
+    pipeline.clear();
+    clearTimeout(hideTimer);
+    hideProgress();
+  };
+
   els.fileInput.addEventListener("change", () => {
     const file = els.fileInput.files[0];
-    if (file) {
-      videoSource.loadFile(file);
-      pipeline.clear();
-      clearTimeout(hideTimer);
-      hideProgress();
-    }
+    if (file) loadVideoFile(file);
   });
+
+  // Vídeo entrante por "Compartir → Strobo" (Android): el SW lo dejó en
+  // IndexedDB y nos redirigió con ?shared=1.
+  if (new URLSearchParams(location.search).has("shared")) {
+    history.replaceState(null, "", location.pathname);
+    takeShared().then((file) => {
+      if (file) loadVideoFile(file);
+    });
+  }
 
   // INTERVAL: separación entre las copias del sujeto. No recaptura; submuestrea
   // la caché por tiempo y recompone (más ms = menos copias, más espaciadas).
