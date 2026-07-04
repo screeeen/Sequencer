@@ -45,6 +45,21 @@
         <button id="play" type="button">Play</button>
       </section>
 
+      <section id="status" hidden>
+        <h2>Status</h2>
+        <div class="progress-row">
+          <span id="progress" class="progress-label"></span>
+          <div class="progress-track">
+            <div id="progress-fill" class="progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="result">
+        <h2>Result</h2>
+        <canvas id="output" width="960" height="540"></canvas>
+      </section>
+
       <section id="controls">
         <h2>Controls</h2>
 
@@ -91,13 +106,6 @@
           <button id="save" type="button">save picture</button>
         </div>
 
-        <div id="progress-row" class="progress-row" hidden>
-          <span id="progress" class="progress-label"></span>
-          <div class="progress-track">
-            <div id="progress-fill" class="progress-fill"></div>
-          </div>
-        </div>
-
         <details id="analysis" class="analysis">
           <summary>Analysis — how the threshold was picked</summary>
           <p class="hint">
@@ -109,11 +117,6 @@
           <canvas id="histogram" width="960" height="220"></canvas>
           <p id="analysis-stats" class="hint">Play a video to run the analysis.</p>
         </details>
-      </section>
-
-      <section id="result">
-        <h2>Result</h2>
-        <canvas id="output" width="960" height="540"></canvas>
       </section>
 
       <footer id="version" class="version"></footer>

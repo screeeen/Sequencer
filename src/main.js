@@ -21,7 +21,7 @@ const els = {
   resetButton: document.getElementById("reset"),
   saveButton: document.getElementById("save"),
   progress: document.getElementById("progress"),
-  progressRow: document.getElementById("progress-row"),
+  progressRow: document.getElementById("status"),
   progressFill: document.getElementById("progress-fill"),
   histCanvas: document.getElementById("histogram"),
   histStats: document.getElementById("analysis-stats"),
