@@ -42,6 +42,7 @@ export function createPipeline(video, strobe) {
     frames: [], // ImageData[] capturados durante la reproducción
     busy: false,
     cropper: null, // recorte espacial (src/cropper.js); null = frame completo
+    recorder: null, // graba el canvas durante la composición (src/recorder.js)
     onProgress: () => {}, // (phase, fraction)
     onAutoThreshold: () => {}, // (threshold) — la UI refleja el valor calculado
   };
@@ -182,6 +183,9 @@ export function createPipeline(video, strobe) {
   };
 
   const composeAll = async (indices) => {
+    // La grabación arranca sobre el fondo limpio: el vídeo enseña las
+    // siluetas apareciendo una a una, tal cual lo ve el usuario.
+    p.recorder?.start();
     strobe.resetAccumulator();
     const total = indices.length;
     for (let i = 0; i < total; i++) {
@@ -197,6 +201,15 @@ export function createPipeline(video, strobe) {
       await yieldToUI();
     }
     p.onProgress("done", 1);
+    if (p.recorder?.recording) {
+      // Sostiene el strobo terminado ~0.5s antes de cerrar el vídeo (los
+      // re-flush fuerzan frames en el stream aunque el canvas no cambie).
+      for (let k = 0; k < 10; k++) {
+        strobe.flush();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      p.recorder.stop();
+    }
   };
 
   /**

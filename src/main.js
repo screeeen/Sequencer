@@ -4,6 +4,7 @@ import { createVideoSource } from "./video.js";
 import { createStrobe } from "./strobe.js";
 import { createPipeline } from "./pipeline.js";
 import { createCropper } from "./cropper.js";
+import { createRecorder } from "./recorder.js";
 import { setupUI } from "./ui.js";
 import { VERSION } from "./version.js";
 
@@ -21,6 +22,7 @@ const els = {
   playButton: document.getElementById("play"),
   resetButton: document.getElementById("reset"),
   saveButton: document.getElementById("save"),
+  saveVideoButton: document.getElementById("saveVideo"),
   progress: document.getElementById("progress"),
   progressRow: document.getElementById("status"),
   progressFill: document.getElementById("progress-fill"),
@@ -48,6 +50,7 @@ const videoSource = createVideoSource(els.video);
 const pipeline = createPipeline(els.video, strobe);
 const cropper = createCropper(els.videoBox, els.cropRect);
 pipeline.cropper = cropper;
+pipeline.recorder = createRecorder(els.output);
 
 setupUI(els, videoSource, strobe, pipeline, cropper);
 

@@ -26,6 +26,27 @@ function dataURLtoBlob(dataURL) {
   return new Blob([bytes], { type: mime });
 }
 
+/**
+ * Entrega un File al usuario: hoja de compartir si el navegador puede
+ * (móvil → Instagram), descarga clásica si no. Síncrono: debe llamarse
+ * dentro del gesto del usuario (navigator.share lo exige en iOS).
+ */
+function deliverFile(file) {
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: "strobe" }).catch(() => {});
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = file.name;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // Etiquetas de cada fase del pipeline para el indicador de progreso.
 const PHASE_LABEL = {
   capturing: "capturing",
@@ -92,6 +113,8 @@ export function setupUI(els, videoSource, strobe, pipeline, cropper) {
   const loadVideoFile = (file) => {
     videoSource.loadFile(file);
     pipeline.clear();
+    pipeline.recorder?.discard(); // el clip de recomposición era de otro vídeo
+    els.saveVideoButton.hidden = true;
     clearTimeout(hideTimer);
     hideProgress();
     els.guide.hidden = true;
@@ -349,23 +372,22 @@ export function setupUI(els, videoSource, strobe, pipeline, cropper) {
       credit: exportState.creditOn ? exportState.credit : "",
     });
     const blob = dataURLtoBlob(canvas.toDataURL("image/png"));
-    const file = new File([blob], "sequence.png", { type: "image/png" });
-
-    // navigator.share debe llamarse dentro del gesto -> nada async antes.
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: "strobe" }).catch(() => {});
-      return;
-    }
-
-    // Fallback (escritorio): descarga clásica.
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "sequence.png";
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    deliverFile(new File([blob], "sequence.png", { type: "image/png" }));
   });
+
+  // SAVE VIDEO: el pipeline graba el canvas durante cada composición (las
+  // siluetas pintándose una a una) y deja el clip en recorder.blob; aquí solo
+  // se entrega. El botón aparece cuando existe la primera grabación.
+  const recorder = pipeline.recorder;
+  if (recorder) {
+    recorder.onRecorded = () => {
+      els.saveVideoButton.hidden = false;
+    };
+    els.saveVideoButton.addEventListener("click", () => {
+      const blob = recorder.blob;
+      if (!blob) return;
+      const ext = blob.type.includes("mp4") ? "mp4" : "webm";
+      deliverFile(new File([blob], `sequence.${ext}`, { type: blob.type }));
+    });
+  }
 }

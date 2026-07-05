@@ -30,7 +30,10 @@ v1 dejaba abiertas están cerradas y marcadas como *[DECISIÓN]*.
 | 6 | Robustez móvil | Wake lock en captura, avisos de códec, guía de vacío |
 
 **No-goals**: pegar-enlace con backend extractor (módulo futuro desacoplado);
-API oficial de Instagram; export a vídeo; rotación en el crop.
+API oficial de Instagram; rotación en el crop. ~~Export a vídeo~~ — levantado
+en v0.12.0: `src/recorder.js` graba el canvas de Result durante la composición
+(MediaRecorder + captureStream, MP4 si el navegador puede, WebM si no) y
+"save video" comparte/descarga el clip de las siluetas pintándose una a una.
 
 ## Principios (usabilidad y calidad de imagen)
 
