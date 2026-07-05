@@ -233,6 +233,14 @@ p {
 }
 
 /* --- Export: máscara de encuadre y control segmentado --- */
+/* Mismo ritmo vertical que #video-panel y #controls: sin esto, la fila
+   "Export size" quedaba pegada al canvas del resultado. */
+#result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 #result-box {
   position: relative;
   overflow: hidden; /* recorta la sombra-máscara de la ventana de encuadre */
@@ -280,8 +288,15 @@ p {
   color: #fff;
 }
 
+/* El label no reserva los 9rem genéricos (dejaba un hueco muerto) y el
+   input puede encoger (min-width: 0) para no desbordar en móvil. */
+.control.credit-control label {
+  width: auto;
+}
+
 #creditText {
   flex: 1;
+  min-width: 0;
   max-width: 14rem;
   border: 1px solid #ccc;
   border-radius: 5px;
