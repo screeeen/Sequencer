@@ -211,8 +211,17 @@ export function setupUI(els, videoSource, strobe, pipeline, cropper) {
     if (pipeline.hasFrames) pipeline.invalidate();
   };
 
+  // Códecs no soportados (p. ej. HEVC .mov en Chrome Android).
+  const showCodecError = () => {
+    els.progressRow.hidden = false;
+    els.progressFill.classList.remove("indeterminate");
+    els.progressFill.style.width = "0%";
+    els.progress.textContent = "format not supported — try MP4 (H.264)";
+  };
+  els.video.addEventListener("error", showCodecError);
+
   // Al conocer la duración: trim a rango completo y controles visibles.
-  els.video.addEventListener("loadedmetadata", () => {
+  const onMetadata = () => {
     if (!els.video.videoWidth) return showCodecError();
     const d = els.video.duration || 0;
     els.trimIn.max = els.trimOut.max = d.toFixed(1);
@@ -223,16 +232,11 @@ export function setupUI(els, videoSource, strobe, pipeline, cropper) {
     els.trimRow.hidden = false;
     els.cropRect.hidden = false;
     cropper.reset();
-  });
-
-  // Códecs no soportados (p. ej. HEVC .mov en Chrome Android).
-  const showCodecError = () => {
-    els.progressRow.hidden = false;
-    els.progressFill.classList.remove("indeterminate");
-    els.progressFill.style.width = "0%";
-    els.progress.textContent = "format not supported — try MP4 (H.264)";
   };
-  els.video.addEventListener("error", showCodecError);
+  els.video.addEventListener("loadedmetadata", onMetadata);
+  // El vídeo de ejemplo puede ganar la carrera al módulo (caché rápida) y
+  // tener ya metadata: el evento no volverá a disparar, aplicamos ahora.
+  if (els.video.readyState >= 1) onMetadata();
 
   // PLAY: reproduce el vídeo; el pipeline captura durante la reproducción y
   // compone al terminar (funciona en iOS gracias al gesto del usuario +
